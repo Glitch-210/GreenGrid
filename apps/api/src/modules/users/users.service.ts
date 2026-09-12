@@ -1,0 +1,97 @@
+import { prisma } from "../../config/prisma";
+import { Decimal } from "../../lib/decimal";
+import type { AuthUser } from "../../middleware/auth.middleware";
+
+export async function getDashboard(user: AuthUser) {
+  if (user.role === "PROSUMER") return prosumerDashboard(user.id);
+  if (user.role === "CONSUMER") return consumerDashboard(user.id);
+  if (user.role === "UTILITY") return utilityDashboard();
+  return adminDashboard();
+}
+
+async function prosumerDashboard(userId: string) {
+  const credits = await prisma.energyCredit.findMany({ where: { ownerId: userId } });
+  const totals = credits.reduce(
+    (acc, c) => {
+      acc.available = acc.available.plus(c.availableKwh);
+      acc.reserved = acc.reserved.plus(c.reservedKwh);
+      acc.sold = acc.sold.plus(c.soldKwh);
+      acc.retired = acc.retired.plus(c.retiredKwh);
+      return acc;
+    },
+    { available: new Decimal(0), reserved: new Decimal(0), sold: new Decimal(0), retired: new Decimal(0) },
+  );
+
+  const earnings = await prisma.transaction.aggregate({
+    where: { sellerId: userId, status: { in: ["COMPLETED", "SETTLED", "CREDIT_TRANSFERRED"] } },
+    _sum: { sellerPayout: true },
+  });
+
+  return {
+    role: "PROSUMER",
+    creditBalance: {
+      available: totals.available.toFixed(4),
+      reserved: totals.reserved.toFixed(4),
+      sold: totals.sold.toFixed(4),
+      retired: totals.retired.toFixed(4),
+    },
+    totalEarnings: (earnings._sum.sellerPayout ?? new Decimal(0)).toFixed(4),
+    creditCount: credits.length,
+  };
+}
+
+async function consumerDashboard(userId: string) {
+  const txns = await prisma.transaction.findMany({ where: { buyerId: userId } });
+  const totalSpent = txns.reduce((sum, t) => sum.plus(t.totalAmount), new Decimal(0));
+  const totalKwh = txns.reduce((sum, t) => sum.plus(t.quantityKwh), new Decimal(0));
+
+  const settlements = await prisma.settlement.findMany({ where: { consumerId: userId } });
+  const totalBillAdjustment = settlements.reduce((sum, s) => sum.plus(s.billAdjustment), new Decimal(0));
+
+  return {
+    role: "CONSUMER",
+    totalPurchasedKwh: totalKwh.toFixed(4),
+    totalSpent: totalSpent.toFixed(4),
+    totalBillAdjustment: totalBillAdjustment.toFixed(4),
+    transactionCount: txns.length,
+  };
+}
+
+async function utilityDashboard() {
+  const zones = await prisma.gridZone.findMany();
+  const settlementQueue = await prisma.settlement.count({ where: { status: "PENDING" } });
+  const totalTraded = await prisma.transaction.aggregate({
+    where: { status: { in: ["COMPLETED", "SETTLED"] } },
+    _sum: { quantityKwh: true },
+  });
+
+  return {
+    role: "UTILITY",
+    zones: zones.map((z) => ({
+      zoneCode: z.zoneCode,
+      name: z.name,
+      capacityKw: z.capacityKw.toFixed(4),
+      currentLoadKw: z.currentLoadKw.toFixed(4),
+      status: z.status,
+    })),
+    settlementQueueSize: settlementQueue,
+    totalP2PTradedKwh: (totalTraded._sum.quantityKwh ?? new Decimal(0)).toFixed(4),
+  };
+}
+
+async function adminDashboard() {
+  const [userCount, txnCount, flaggedReadings, mismatches] = await Promise.all([
+    prisma.user.count(),
+    prisma.transaction.count(),
+    prisma.meterReading.count({ where: { status: "FLAGGED" } }),
+    prisma.settlement.count({ where: { status: "MISMATCH" } }),
+  ]);
+
+  return {
+    role: "ADMIN",
+    userCount,
+    transactionCount: txnCount,
+    flaggedReadings,
+    settlementMismatches: mismatches,
+  };
+}

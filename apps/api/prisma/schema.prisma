@@ -1,0 +1,378 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PROSUMER
+  CONSUMER
+  UTILITY
+  REGULATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum MeterType {
+  SOLAR
+  CONSUMER
+  BIDIRECTIONAL
+}
+
+enum MeterStatus {
+  ACTIVE
+  OFFLINE
+  SUSPENDED
+  FLAGGED
+}
+
+enum ZoneStatus {
+  NORMAL
+  CONGESTED
+  OUTAGE
+}
+
+enum Congestion {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CreditStatus {
+  VERIFIED
+  MINTED
+  AVAILABLE
+  LISTED
+  RESERVED
+  PURCHASED
+  SETTLED
+  RETIRED
+  EXPIRED
+  FROZEN
+}
+
+enum ListingStatus {
+  ACTIVE
+  PARTIAL
+  RESERVED
+  SOLD
+  CANCELLED
+  EXPIRED
+}
+
+enum MatchStatus {
+  MATCHED
+  RESERVED
+  COMPLETED
+  CANCELLED
+}
+
+enum TxStatus {
+  PENDING
+  MATCHED
+  RESERVED
+  PAYMENT_PENDING
+  PAID
+  CREDIT_TRANSFERRED
+  SETTLEMENT_PENDING
+  SETTLED
+  COMPLETED
+  PAYMENT_FAILED
+  BLOCKCHAIN_PENDING
+  BLOCKCHAIN_FAILED
+  SETTLEMENT_FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum PayStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum SettleStatus {
+  PENDING
+  SUBMITTED
+  SETTLED
+  PARTIAL
+  FAILED
+  MISMATCH
+}
+
+enum ReadingStatus {
+  PENDING
+  VERIFIED
+  FLAGGED
+  REJECTED
+}
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  phone        String?
+  passwordHash String
+  role         Role
+  status       UserStatus @default(ACTIVE)
+  displayAlias String     @unique // "Solar-Pro-102" — privacy in listings
+  walletAddress String? // custodial-derived, optional
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  meters        Meter[]
+  credits       EnergyCredit[]       @relation("CreditOwner")
+  listings      MarketplaceListing[]
+  buyerTxns     Transaction[]        @relation("Buyer")
+  sellerTxns    Transaction[]        @relation("Seller")
+  notifications Notification[]
+  auditLogs     AuditLog[]
+}
+
+model GridZone {
+  id            String     @id @default(uuid())
+  zoneCode      String     @unique // GZ-AHM-W
+  name          String
+  capacityKw    Decimal    @db.Decimal(18, 4)
+  currentLoadKw Decimal    @db.Decimal(18, 4) @default(0)
+  basePrice     Decimal    @db.Decimal(18, 4) @default(4.00) // ₹/kWh utility reference
+  priceFloor    Decimal    @db.Decimal(18, 4) @default(2.50)
+  priceCeiling  Decimal    @db.Decimal(18, 4) @default(7.00)
+  lossFactor    Decimal    @db.Decimal(6, 4) @default(0.87) // DISCOM-provided
+  status        ZoneStatus @default(NORMAL)
+  neighbourCodes String[]  @default([]) // eligible cross-zone trading
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  meters   Meter[]
+  statuses GridStatus[]
+  prices   EnergyPrice[]
+  listings MarketplaceListing[]
+}
+
+model Meter {
+  id          String      @id @default(uuid())
+  meterNumber String      @unique
+  userId      String
+  gridZoneId  String
+  meterType   MeterType
+  status      MeterStatus @default(ACTIVE)
+  ratedKw     Decimal     @db.Decimal(10, 4) @default(1)
+  installedAt DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  user     User           @relation(fields: [userId], references: [id])
+  gridZone GridZone       @relation(fields: [gridZoneId], references: [id])
+  readings MeterReading[]
+  credits  EnergyCredit[]
+
+  @@index([userId])
+  @@index([gridZoneId])
+}
+
+model MeterReading {
+  id             String        @id @default(uuid())
+  meterId        String
+  externalId     String // utility's reading id, for idempotency
+  timestamp      DateTime
+  generationKwh  Decimal       @db.Decimal(18, 4)
+  consumptionKwh Decimal       @db.Decimal(18, 4)
+  importKwh      Decimal       @db.Decimal(18, 4) @default(0)
+  exportKwh      Decimal       @db.Decimal(18, 4) @default(0)
+  surplusKwh     Decimal       @db.Decimal(18, 4) @default(0)
+  status         ReadingStatus @default(PENDING)
+  flagReason     String?
+  creditIssued   Boolean       @default(false) // hard stop on double-minting
+  payloadHash    String // sha256 of normalised payload
+  createdAt      DateTime      @default(now())
+
+  meter   Meter          @relation(fields: [meterId], references: [id])
+  credits EnergyCredit[]
+
+  @@unique([meterId, externalId]) // replay / duplicate protection
+  @@unique([meterId, timestamp]) // one reading per interval
+  @@index([meterId, timestamp])
+}
+
+model EnergyCredit {
+  id             String       @id @default(uuid())
+  creditId       String       @unique // EC-GZ01-20260912-0007
+  ownerId        String
+  sourceMeterId  String
+  readingId      String       @unique // 1 reading -> at most 1 credit batch
+  quantityKwh    Decimal      @db.Decimal(18, 4)
+  availableKwh   Decimal      @db.Decimal(18, 4)
+  reservedKwh    Decimal      @db.Decimal(18, 4) @default(0)
+  soldKwh        Decimal      @db.Decimal(18, 4) @default(0)
+  retiredKwh     Decimal      @db.Decimal(18, 4) @default(0)
+  status         CreditStatus @default(AVAILABLE)
+  gridZoneId     String
+  generatedAt    DateTime
+  expiresAt      DateTime
+  blockchainTxHash String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  owner   User         @relation("CreditOwner", fields: [ownerId], references: [id])
+  meter   Meter        @relation(fields: [sourceMeterId], references: [id])
+  reading MeterReading @relation(fields: [readingId], references: [id])
+  listings MarketplaceListing[]
+
+  @@index([ownerId, status])
+  @@index([gridZoneId, status])
+}
+
+model MarketplaceListing {
+  id            String        @id @default(uuid())
+  sellerId      String
+  creditId      String
+  gridZoneId    String
+  quantityKwh   Decimal       @db.Decimal(18, 4)
+  remainingKwh  Decimal       @db.Decimal(18, 4)
+  pricePerKwh   Decimal       @db.Decimal(18, 4)
+  status        ListingStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  expiresAt     DateTime
+
+  seller  User         @relation(fields: [sellerId], references: [id])
+  credit  EnergyCredit @relation(fields: [creditId], references: [id])
+  zone    GridZone     @relation(fields: [gridZoneId], references: [id])
+  matches EnergyMatch[]
+
+  @@index([status, gridZoneId, pricePerKwh])
+}
+
+model EnergyMatch {
+  id            String      @id @default(uuid())
+  transactionId String?
+  buyerId       String
+  sellerId      String
+  listingId     String
+  quantityKwh   Decimal     @db.Decimal(18, 4)
+  pricePerKwh   Decimal     @db.Decimal(18, 4)
+  score         Decimal     @db.Decimal(6, 4)
+  gridZoneId    String
+  status        MatchStatus @default(MATCHED)
+  createdAt     DateTime    @default(now())
+
+  listing     MarketplaceListing @relation(fields: [listingId], references: [id])
+  transaction Transaction?       @relation(fields: [transactionId], references: [id])
+}
+
+model Transaction {
+  id             String   @id @default(uuid())
+  transactionId  String   @unique // TXN-20260912-0042
+  idempotencyKey String?  @unique
+  buyerId        String
+  sellerId       String? // null for multi-seller basket
+  quantityKwh    Decimal  @db.Decimal(18, 4)
+  pricePerKwh    Decimal  @db.Decimal(18, 4) // weighted average
+  totalAmount    Decimal  @db.Decimal(18, 4)
+  platformFee    Decimal  @db.Decimal(18, 4)
+  sellerPayout   Decimal  @db.Decimal(18, 4)
+  status         TxStatus @default(PENDING)
+  gridZoneId     String
+  blockchainTxHash String?
+  chainAttempts  Int      @default(0)
+  failureReason  String?
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+
+  buyer      User          @relation("Buyer", fields: [buyerId], references: [id])
+  seller     User?         @relation("Seller", fields: [sellerId], references: [id])
+  matches    EnergyMatch[]
+  payment    Payment?
+  settlement Settlement?
+
+  @@index([buyerId])
+  @@index([status])
+}
+
+model Payment {
+  id               String    @id @default(uuid())
+  transactionId    String    @unique
+  amount           Decimal   @db.Decimal(18, 4)
+  paymentReference String    @unique
+  status           PayStatus @default(PENDING)
+  paymentMethod    String    @default("MOCK")
+  createdAt        DateTime  @default(now())
+  transaction      Transaction @relation(fields: [transactionId], references: [id])
+}
+
+model Settlement {
+  id               String       @id @default(uuid())
+  transactionId    String       @unique
+  consumerId       String
+  discomReference  String?
+  requestedKwh     Decimal      @db.Decimal(18, 4)
+  settledKwh       Decimal      @db.Decimal(18, 4) @default(0)
+  billAdjustment   Decimal      @db.Decimal(18, 4) @default(0)
+  status           SettleStatus @default(PENDING)
+  attempts         Int          @default(0)
+  failureReason    String?
+  createdAt        DateTime     @default(now())
+  settledAt        DateTime?
+  transaction      Transaction  @relation(fields: [transactionId], references: [id])
+}
+
+model GridStatus {
+  id                 String     @id @default(uuid())
+  gridZoneId         String
+  loadKw             Decimal    @db.Decimal(18, 4)
+  generationKw       Decimal    @db.Decimal(18, 4)
+  availableCapacityKw Decimal   @db.Decimal(18, 4)
+  congestionLevel    Congestion
+  timestamp          DateTime   @default(now())
+  zone GridZone @relation(fields: [gridZoneId], references: [id])
+
+  @@index([gridZoneId, timestamp])
+}
+
+model EnergyPrice {
+  id               String   @id @default(uuid())
+  gridZoneId       String
+  basePrice        Decimal  @db.Decimal(18, 4)
+  demandFactor     Decimal  @db.Decimal(8, 4)
+  supplyFactor     Decimal  @db.Decimal(8, 4)
+  congestionFactor Decimal  @db.Decimal(8, 4)
+  finalPrice       Decimal  @db.Decimal(18, 4)
+  timestamp        DateTime @default(now())
+  zone GridZone @relation(fields: [gridZoneId], references: [id])
+
+  @@index([gridZoneId, timestamp])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+}
