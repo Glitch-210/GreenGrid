@@ -109,6 +109,12 @@ own predicate, 0 mismatches), and the controls sit in a real `<form onSubmit>` s
 publishes. `Button` defaults to `type="button"` so a button dropped into a form can no
 longer submit it by accident.
 
+**Bug 22** split the Sell page's single `message` string into `{ kind, text }`: errors in
+`text-fault` with a `✕`, success in `text-solar-dark` with a `✓`, in a persistent
+live region that is `role="alert"` for errors and `role="status"` for success. Flagged but
+not fixed: `text-fault` measures 3.55:1 on white and fails WCAG AA — pre-existing and
+app-wide, see that section.
+
 **Bugs 3, 25 and 26** were fixed together: seller earnings now come from `EnergyMatch`
 via a shared `getSellerTotals`, used by both `/users/dashboard` and `/analytics/me`,
 against one `SELLER_EARNED_STATUSES` list thresholded at `PAID`.
@@ -1137,6 +1143,10 @@ rather than `null`.
 
 ## Bug 22 — Success and failure look identical
 
+**Status: FIXED.** `message` is now `{ kind, text }`, errors render in `text-fault` with
+a `✕` glyph, success in `text-solar-dark` with `✓`, and the region is a live
+region with `role="alert"` / `role="status"`. See "Fix — APPLIED" below.
+
 **Status: CONFIRMED.** The error "Not enough available EC to list" rendered with
 `className="font-mono text-sm"`, computed colour **`rgb(27, 27, 27)`** (near-black — the
 same as success text), and **`role: null`** so it is not announced to assistive tech. The
@@ -1150,6 +1160,43 @@ renders it in plain text either way. Error text elsewhere in the app uses `text-
 
 **Fix.** Split into `{ kind: "ok" | "error", text }`, style errors with `text-fault`, and
 give the region `role="status"` / `role="alert"`.
+
+### Fix — APPLIED
+
+`ProsumerSell.tsx` only. `message` is now `FormMessage = { kind: "ok" | "error"; text }`,
+set at all four sites (blocked submit, success, request failure, and cleared on retry).
+
+- **Colour.** Errors `font-bold text-fault`, success `text-solar-dark` — matching the
+  `text-fault` convention already used by `Marketplace.tsx:100` and
+  `ProsumerListings.tsx:55`.
+- **Not colour alone.** A `✕` / `✓` glyph precedes the text, `aria-hidden` since
+  the role already carries severity — so the outcome survives a colour-blind reader or a
+  greyscale screenshot.
+- **Announced.** The wrapper carries `role="alert"` + `aria-live="assertive"` for errors
+  and `role="status"` + `aria-live="polite"` for success, with `aria-atomic`. It is
+  rendered **unconditionally** rather than only when a message exists: a live region
+  created in the same commit as its content is unreliably announced, so the empty
+  `min-h-[1.5rem]` container has to be there first.
+
+### Follow-up found while fixing this — `text-fault` fails contrast
+
+Measured against the white card background:
+
+| token | hex | contrast | WCAG AA (4.5:1, normal text) |
+|---|---|---|---|
+| `text-fault` (errors) | `#FF3B30` | **3.55:1** | **fails** |
+| `text-solar-dark` (success) | `#166534` | 7.13:1 | passes |
+| the old shared near-black | `#1b1b1b` | 17.22:1 | passes |
+
+`font-bold` at `text-sm` (14px) does not reach the large-text exemption (18.66px bold), so
+3.55:1 is a genuine AA failure. This is **pre-existing and app-wide** — `text-fault` is the
+established error colour on `Marketplace.tsx:100` and `ProsumerListings.tsx:55,62` — so
+this fix follows the convention rather than diverging from it on one screen.
+
+The palette change belongs in its own pass: add a `fault.dark` token (a red at or below
+`#D32F2F`, 4.5:1+ on white) for error **text**, leaving `fault.DEFAULT` for `bg-fault`
+fills. Note `bg-fault` with `text-white` (`Button.tsx:6`) measures the same 3.55:1 and has
+the same problem. Not changed here — recolouring the palette is well outside this bug.
 
 ---
 

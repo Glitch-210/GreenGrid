@@ -17,6 +17,8 @@ interface ProsumerDashboardData {
 /** Only used if the dashboard call hasn't landed yet; the server value wins. */
 const FALLBACK_FEE_RATE = 0.05;
 
+type FormMessage = { kind: "ok" | "error"; text: string };
+
 export default function ProsumerSell() {
   const { data: credits } = useApiQuery<SellableCreditDTO[]>(
     ["credits", "sellable"],
@@ -35,7 +37,10 @@ export default function ProsumerSell() {
   const [pricePerKwh, setPricePerKwh] = useState("");
   // Once the seller types a price, stop re-seeding it from under them.
   const [priceTouched, setPriceTouched] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  // One string for both outcomes rendered them identically — a rejection and a
+  // successful publish were the same near-black line. The kind drives both the
+  // colour and the ARIA role.
+  const [message, setMessage] = useState<FormMessage | null>(null);
 
   const publish = useApiMutation<{ creditId: string; quantityKwh: number; pricePerKwh: number }>(
     "post",
@@ -108,7 +113,7 @@ export default function ProsumerSell() {
     // submit (Enter, programmatic) so the checks cannot be stepped around.
     const blocked = priceError ?? quantityError;
     if (blocked) {
-      setMessage(blocked);
+      setMessage({ kind: "error", text: blocked });
       return;
     }
     setMessage(null);
@@ -118,10 +123,10 @@ export default function ProsumerSell() {
         quantityKwh: Number(quantityKwh),
         pricePerKwh: Number(pricePerKwh),
       });
-      setMessage("Listing broadcast to the P2P market.");
+      setMessage({ kind: "ok", text: "Listing broadcast to the P2P market." });
       setQuantityKwh("");
     } catch (err) {
-      setMessage(apiErrorMessage(err, "Failed to publish listing"));
+      setMessage({ kind: "error", text: apiErrorMessage(err, "Failed to publish listing") });
     }
   }
 
@@ -261,7 +266,29 @@ export default function ProsumerSell() {
             </div>
           </div>
 
-          <div className="min-h-[1.5rem]">{message && <p className="font-mono text-sm">{message}</p>}</div>
+          {/*
+            The container is rendered unconditionally so it is a live region
+            before any text lands in it — a region created at the same moment as
+            its content is unreliably announced.
+          */}
+          <div
+            className="min-h-[1.5rem]"
+            role={message?.kind === "error" ? "alert" : "status"}
+            aria-live={message?.kind === "error" ? "assertive" : "polite"}
+            aria-atomic="true"
+          >
+            {message && (
+              <p
+                className={`font-mono text-sm ${
+                  message.kind === "error" ? "font-bold text-fault" : "text-solar-dark"
+                }`}
+              >
+                {/* Glyph so the outcome is not carried by colour alone; the
+                    role already conveys severity to AT, so hide it there. */}
+                <span aria-hidden>{message.kind === "error" ? "✕" : "✓"}</span> {message.text}
+              </p>
+            )}
+          </div>
 
           <Button
             variant="solar"
