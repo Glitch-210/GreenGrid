@@ -9,7 +9,20 @@ export const router = Router();
 
 router.get("/", authMiddleware, requireRole(Role.REGULATOR, Role.ADMIN), async (_req, res, next) => {
   try {
-    const logs = await prisma.auditLog.findMany({ orderBy: { timestamp: "desc" }, take: 200 });
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { timestamp: "desc" },
+      take: 200,
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            role: true,
+            displayAlias: true,
+          },
+        },
+      },
+    });
     ok(res, logs);
   } catch (err) {
     next(err);

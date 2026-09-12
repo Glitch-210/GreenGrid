@@ -15,6 +15,17 @@ export function createApp() {
   app.use(express.json());
   app.use(apiRateLimit);
 
+  app.get("/", (_req, res) => {
+    res.json({
+      success: true,
+      message: "WattShare Backend API is running successfully!",
+      version: "v1",
+      healthCheck: `${API_PREFIX}/health`,
+      frontendUrl: "http://localhost:5173",
+      note: "Visit http://localhost:5173 to access the WattShare web dashboard."
+    });
+  });
+
   app.use(API_PREFIX, apiRouter);
 
   app.use(notFoundMiddleware);

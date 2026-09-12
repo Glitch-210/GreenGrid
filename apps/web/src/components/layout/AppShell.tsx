@@ -43,11 +43,24 @@ function navItemsForRole(role: Role): NavItem[] {
         profile,
       ];
     case Role.UTILITY:
-      return [home, { key: "transactions", label: "Settlements", icon: "▤", to: "/utility" }, profile];
-    case Role.ADMIN:
+      return [
+        home,
+        { key: "marketplace", label: "Market", icon: "▲", to: "/marketplace" },
+        profile,
+      ];
     case Role.REGULATOR:
+      return [
+        home,
+        { key: "marketplace", label: "Market", icon: "▲", to: "/marketplace" },
+        profile,
+      ];
+    case Role.ADMIN:
     default:
-      return [home, { key: "transactions", label: "Audit", icon: "▤", to: "/admin" }, profile];
+      return [
+        home,
+        { key: "marketplace", label: "Market", icon: "▲", to: "/marketplace" },
+        profile,
+      ];
   }
 }
 

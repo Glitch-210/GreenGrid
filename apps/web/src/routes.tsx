@@ -16,6 +16,7 @@ import Marketplace from "./features/marketplace/Marketplace";
 import SettlementDetail from "./features/transactions/SettlementDetail";
 import UtilityDashboard from "./features/utility/UtilityDashboard";
 import AdminDashboard from "./features/admin/AdminDashboard";
+import RegulatorDashboard from "./features/regulator/RegulatorDashboard";
 import ProfilePage from "./features/profile/ProfilePage";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -51,6 +52,7 @@ export function AppRoutes() {
 
         <Route path="/utility" element={<UtilityDashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/regulator" element={<RegulatorDashboard />} />
 
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

@@ -8,6 +8,7 @@ export async function getDashboard(user: AuthUser) {
   if (user.role === "PROSUMER") return prosumerDashboard(user.id);
   if (user.role === "CONSUMER") return consumerDashboard(user.id);
   if (user.role === "UTILITY") return utilityDashboard();
+  if (user.role === "REGULATOR") return regulatorDashboard();
   return adminDashboard();
 }
 
@@ -99,3 +100,74 @@ async function adminDashboard() {
     settlementMismatches: mismatches,
   };
 }
+
+async function regulatorDashboard() {
+  const [userCount, txnCount, flaggedReadings, mismatches, zones, creditsAgg, activeListings, flaggedMeters] =
+    await Promise.all([
+      prisma.user.count(),
+      prisma.transaction.count(),
+      prisma.meterReading.count({ where: { status: "FLAGGED" } }),
+      prisma.settlement.count({ where: { status: "MISMATCH" } }),
+      prisma.gridZone.findMany(),
+      prisma.energyCredit.aggregate({ _sum: { quantityKwh: true, soldKwh: true, retiredKwh: true } }),
+      prisma.marketplaceListing.count({ where: { status: "ACTIVE" } }),
+      prisma.meter.findMany({
+        where: { status: "FLAGGED" },
+        include: {
+          user: { select: { name: true, displayAlias: true, email: true } },
+          gridZone: { select: { zoneCode: true, name: true } },
+        },
+      }),
+    ]);
+
+  return {
+    role: "REGULATOR",
+    userCount,
+    transactionCount: txnCount,
+    flaggedReadings,
+    settlementMismatches: mismatches,
+    activeListings,
+    flaggedMetersCount: flaggedMeters.length,
+    flaggedMeters: flaggedMeters.map((m) => ({
+      id: m.id,
+      meterNumber: m.meterNumber,
+      userAlias: m.user.displayAlias,
+      userEmail: m.user.email,
+      zoneCode: m.gridZone.zoneCode,
+      zoneName: m.gridZone.name,
+      status: m.status,
+      ratedKw: m.ratedKw.toFixed(2),
+    })),
+    totalMintedKwh: (creditsAgg._sum.quantityKwh ?? new Decimal(0)).toFixed(4),
+    totalSoldKwh: (creditsAgg._sum.soldKwh ?? new Decimal(0)).toFixed(4),
+    totalRetiredKwh: (creditsAgg._sum.retiredKwh ?? new Decimal(0)).toFixed(4),
+    zones: zones.map((z) => ({
+      id: z.id,
+      zoneCode: z.zoneCode,
+      name: z.name,
+      capacityKw: z.capacityKw.toFixed(4),
+      currentLoadKw: z.currentLoadKw.toFixed(4),
+      basePrice: z.basePrice.toFixed(4),
+      priceFloor: z.priceFloor.toFixed(4),
+      priceCeiling: z.priceCeiling.toFixed(4),
+      status: z.status,
+    })),
+  };
+}
+
+export async function getMe(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      meters: {
+        include: {
+          gridZone: { select: { zoneCode: true, name: true } },
+        },
+      },
+    },
+  });
+  if (!user) return null;
+  const { passwordHash, ...safeUser } = user;
+  return safeUser;
+}
+
