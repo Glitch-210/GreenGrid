@@ -13,7 +13,7 @@ export async function createTransactionHandler(req: Request, res: Response, next
 
 export async function listTransactionsHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    ok(res, await transactionsService.listTransactions(req.user!.id));
+    ok(res, await transactionsService.listTransactions(req.user!));
   } catch (err) {
     next(err);
   }

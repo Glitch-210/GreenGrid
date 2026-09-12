@@ -312,18 +312,36 @@ export async function getTransaction(user: AuthUser, id: string) {
   return txn;
 }
 
-export async function listTransactions(userId: string) {
+export async function listTransactions(user: AuthUser) {
+  if (user.role === "REGULATOR" || user.role === "ADMIN" || user.role === "UTILITY") {
+    return prisma.transaction.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        buyer: { select: { name: true, displayAlias: true, email: true } },
+        seller: { select: { name: true, displayAlias: true, email: true } },
+        payment: true,
+        settlement: true,
+      },
+    });
+  }
   return prisma.transaction.findMany({
     where: {
       OR: [
-        { buyerId: userId },
-        { sellerId: userId },
+        { buyerId: user.id },
+        { sellerId: user.id },
         // sellerId is null on multi-seller baskets, so a seller's own sale would
         // otherwise be missing from their history entirely. The match rows carry
         // the real per-listing seller.
-        { matches: { some: { sellerId: userId } } },
+        { matches: { some: { sellerId: user.id } } },
       ],
     },
     orderBy: { createdAt: "desc" },
+    include: {
+      buyer: { select: { name: true, displayAlias: true, email: true } },
+      seller: { select: { name: true, displayAlias: true, email: true } },
+      payment: true,
+      settlement: true,
+    },
   });
 }
+

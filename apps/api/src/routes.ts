@@ -20,6 +20,7 @@ import { router as analyticsRoutes } from "./modules/analytics/analytics.routes"
 import { router as notificationsRoutes } from "./modules/notifications/notifications.routes";
 import { router as auditRoutes } from "./modules/audit/audit.routes";
 import { router as demoRoutes } from "./modules/demo/demo.routes";
+import { router as regulatorRoutes } from "./modules/regulator/regulator.routes";
 
 export const router = Router();
 
@@ -54,3 +55,4 @@ router.use("/analytics", analyticsRoutes);
 router.use("/notifications", notificationsRoutes);
 router.use("/audit", auditRoutes);
 router.use("/demo", demoRoutes);
+router.use("/regulator", regulatorRoutes);

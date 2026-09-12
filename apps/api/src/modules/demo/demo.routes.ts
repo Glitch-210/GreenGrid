@@ -8,7 +8,7 @@ import { resetHandler, resetStatusHandler, clockHandler, congestHandler, discomH
 
 export const router = Router();
 
-router.use(authMiddleware, requireRole(Role.ADMIN));
+router.use(authMiddleware, requireRole(Role.ADMIN, Role.REGULATOR));
 
 router.post("/reset", resetHandler);
 router.get("/reset/status", resetStatusHandler);
