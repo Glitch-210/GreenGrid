@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700;800&amp;family=Space+Grotesk:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { 'colors': { 'on-surface': '#1b1b1b', 'primary-fixed': '#7ffc97', 'secondary-container': '#0448ff', 'on-tertiary-fixed': '#221b00', 'outline': '#6e7b6c', 'error-container': '#ffdad6', 'surface-container-highest': '#e2e2e2', 'tertiary-fixed-dim': '#e9c400', 'on-primary-container': '#f7fff2', 'on-secondary-fixed-variant': '#0033c0', 'surface-container-lowest': '#ffffff', 'surface-container-high': '#e8e8e8', 'on-error-container': '#93000a', 'primary-fixed-dim': '#62df7d', 'error': '#ba1a1a', 'tertiary': '#705d00', 'tertiary-fixed': '#ffe170', 'secondary-fixed': '#dde1ff', 'inverse-on-surface': '#f1f1f1', 'surface-dim': '#dadada', 'inverse-primary': '#62df7d', 'primary-container': '#00873a', 'on-tertiary-fixed-variant': '#544600', 'primary': '#006b2c', 'surface-container': '#eeeeee', 'inverse-surface': '#303030', 'on-background': '#1b1b1b', 'on-secondary': '#ffffff', 'on-primary-fixed': '#002109', 'surface-container-low': '#f3f3f3', 'on-primary': '#ffffff', 'surface-tint': '#006e2d', 'outline-variant': '#bdcaba', 'tertiary-container': '#c9a800', 'background': '#f9f9f9', 'surface-variant': '#e2e2e2', 'secondary-fixed-dim': '#b9c3ff', 'surface': '#f9f9f9', 'on-primary-fixed-variant': '#005320', 'on-surface-variant': '#3e4a3d', 'on-secondary-container': '#d6daff', 'surface-bright': '#f9f9f9', 'on-tertiary-container': '#4c3e00', 'on-tertiary': '#ffffff', 'secondary': '#0035c6', 'on-secondary-fixed': '#001257', 'on-error': '#ffffff' }, 'borderRadius': { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, 'spacing': { 'margin-desktop': '2.5rem', 'gutter-desktop': '1.5rem', 'space-lg': '1.5rem', 'space-xl': '2.5rem', 'space-xs': '0.25rem', 'margin-tablet': '1.5rem', 'gutter': '1rem', 'space-md': '1rem', 'margin': '1rem', 'space-sm': '0.5rem' }, 'fontFamily': { 'headline-md': ['Space Grotesk'], 'body-md': ['Inter'], 'headline-sm': ['Space Grotesk'], 'body-lg': ['Inter'], 'label-mono-lg': ['JetBrains Mono'], 'headline-xl-mobile': ['Space Grotesk'], 'headline-lg': ['Space Grotesk'], 'label-mono-sm': ['JetBrains Mono'], 'metric-display': ['Space Grotesk'], 'headline-xl': ['Space Grotesk'], 'body-sm': ['Inter'], 'metric-display-mobile': ['Space Grotesk'], 'headline-lg-mobile': ['Space Grotesk'], 'label-mono-md': ['JetBrains Mono'] }, 'fontSize': { 'headline-md': ['24px', { 'lineHeight': '28px', 'letterSpacing': '-0.01em', 'fontWeight': '700' }], 'body-md': ['14px', { 'lineHeight': '20px', 'fontWeight': '500' }], 'headline-sm': ['18px', { 'lineHeight': '24px', 'fontWeight': '700' }], 'body-lg': ['16px', { 'lineHeight': '24px', 'fontWeight': '500' }], 'label-mono-lg': ['14px', { 'lineHeight': '18px', 'letterSpacing': '0.02em', 'fontWeight': '700' }], 'headline-xl-mobile': ['32px', { 'lineHeight': '36px', 'letterSpacing': '-0.02em', 'fontWeight': '800' }], 'headline-lg': ['36px', { 'lineHeight': '40px', 'letterSpacing': '-0.02em', 'fontWeight': '700' }], 'label-mono-sm': ['10px', { 'lineHeight': '12px', 'letterSpacing': '0.06em', 'fontWeight': '700' }], 'metric-display': ['56px', { 'lineHeight': '56px', 'letterSpacing': '-0.04em', 'fontWeight': '800' }], 'headline-xl': ['48px', { 'lineHeight': '52px', 'letterSpacing': '-0.03em', 'fontWeight': '800' }], 'body-sm': ['12px', { 'lineHeight': '16px', 'fontWeight': '500' }], 'metric-display-mobile': ['38px', { 'lineHeight': '40px', 'letterSpacing': '-0.03em', 'fontWeight': '800' }], 'headline-lg-mobile': ['26px', { 'lineHeight': '30px', 'letterSpacing': '-0.01em', 'fontWeight': '700' }], 'label-mono-md': ['12px', { 'lineHeight': '16px', 'letterSpacing': '0.04em', 'fontWeight': '700' }] } } } }</script><style>@layer base{html,body{width:100%;margin:0;padding:0;background:#f9f9f9;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col antialiased selection:bg-primary selection:text-on-primary"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="px-gutter h-20 flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="GreenGrid Neo-Brutalist Logo" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1VO3MVv1nBeNcFXEcgvYyVzHZ4c9NuqpMhRDXLiOywIBpK1KiyRICPjopwC9dlH8wxhpkjl-K5Jyo4UQCGT8lsTXbJWTEgAND-1IVP27BAhewTRmM0zjo4gKYgIFl4HDI_p4SjNCKfrqGDAvrlzh7z6mfnkxkWmj2CVgG7-EzwpTB5cLNEW1ZlE-mpGWHjK93rfhMhU7ok4d1bQ8g4tMuppYMpycMKP1bwBmZmiZUu74Nn-KGE6JRFiTd4"/><div class="flex flex-col min-w-0"><div class="flex items-center gap-space-xs"><span class="font-label-mono-lg text-label-mono-lg tracking-wider text-on-surface uppercase truncate">GREENGRID</span></div><div class="flex items-center gap-space-xs"><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant font-bold uppercase truncate">Transactions</span><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 bg-tertiary-fixed text-on-tertiary-fixed font-bold uppercase">ZONE-A</span></div></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><div class="hidden xs:flex flex-col items-end px-2 py-1 bg-surface-container-low"><span class="font-label-mono-sm text-label-mono-sm text-primary font-extrabold">7.6 EC</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">₹52.80</span></div><button aria-label="Notifications" class="relative w-11 h-11 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span></button><img alt="Profile" class="w-8 h-8 rounded-full object-cover flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLH9trqlD8qNdukfSM0X_ETFXs_Nwjp_WuEOw3TDTRbKBn4Xiz6aDFJoMGXK6QsN4OJ1Bg_hZ6z6OuIch-9O7bpDzNkdzKCMa7s03hHvuB6vcUw3COKisH6gZXYxanpjSHcLhF0aW2DDQ_ED27YnQkmfrHHMaDmz-PKn2RjDwMlf1wQHGth_63437r-Jy8hV-wq9d_HsLBGwfy_KDEvgYOdPzrPhykdiiycKJSFNi1MpP_Z2rClA3d"/></div></div></header><main class="flex-1 flex flex-col relative w-full pt-20 pb-28 px-gutter bg-surface"><div class="flex flex-col w-full space-y-space-md">
+<!-- Top Utility Context Block -->
+<div class="p-space-md bg-surface-container-lowest shadow-[4px_4px_0px_#000000] flex flex-col space-y-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 bg-secondary text-on-secondary font-bold uppercase tracking-wider">REGULATORY PORTAL</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary font-bold flex items-center gap-1">
+<span class="inline-block w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+        FEEDER ONLINE
+      </span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface uppercase tracking-tight mt-1">DISCOM BILL SETTLEMENT</h1>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-mono-sm text-label-mono-sm font-semibold">
+<span class="material-symbols-outlined text-base text-secondary">power</span>
+<span>UTILITY: BESCOM (BANGALORE) • DEMO DISCOM</span>
+</div>
+</div>
+<!-- Regulatory Disclaimer Sticker Badge -->
+<div class="p-space-md bg-tertiary-fixed text-on-tertiary-fixed shadow-[4px_4px_0px_#000000] relative overflow-hidden">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-2xl flex-shrink-0 text-on-tertiary-fixed">verified_user</span>
+<div class="flex flex-col space-y-1 min-w-0">
+<span class="font-label-mono-sm text-label-mono-sm tracking-widest font-extrabold uppercase">LEGAL METROLOGY ACT SEC 14-B COMPLIANT</span>
+<p class="font-body-sm text-body-sm leading-relaxed text-on-tertiary-fixed font-semibold">
+          VERIFIED METROLOGICAL LEDGER: GreenGrid records P2P Energy Credit trades and forwards verified meter deductions directly to your local utility provider.
+        </p>
+</div>
+</div>
+</div>
+<!-- Image Feature: Solar Substation Inspection Node -->
+<div class="relative w-full h-36 bg-surface-container shadow-[4px_4px_0px_#000000] overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125" data-alt="High-contrast photograph of modern urban solar smart grid transformers and bidirectional electricity meters at a Whitefield substation, crisp daylight, high-voltage lines against blue sky, neo-brutalist industrial clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBY0iXGL_RTxYJzVrav22EDTkbXYZSV-tMyjRmJkUn6raljJMEKJrsWzBnV3B6RMb1Yu90iw3dK70n2yXyiW72nJTq7WAFGjelyjNlAwKu2fi62GJdmcNnCy9GhL7FAj0QnKiYyqm07dapyIrc2yxhUUf1tRqZmKZMBTnYkpP6IJCSHtmakE5kXASo_sOvHnIiw92-_8L5LR_V5Fhtu6JbB1YuSNuggBKa6b-Z5jQ3E-bibBmDyUbEn"/>
+<div class="absolute bottom-0 inset-x-0 bg-on-surface/90 text-surface-container-lowest px-space-md py-1 flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-wider">NODE: WHITEFIELD_11KV_FEEDER_04</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-fixed uppercase font-bold">50.02 Hz STABLE</span>
+</div>
+</div>
+<!-- Recent Settlement Card -->
+<div class="p-space-md bg-surface-container-lowest shadow-[4px_4px_0px_#000000] flex flex-col space-y-space-md">
+<!-- Header with Approved Status Sticker -->
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">SETTLEMENT RECEIPT</span>
+<span class="font-label-mono-md text-label-mono-md text-on-surface font-extrabold">TXN-GG-2026-00124</span>
+</div>
+<div class="inline-flex items-center gap-1 px-2.5 py-1 bg-primary text-on-primary font-label-mono-sm text-label-mono-sm font-black tracking-wider uppercase shadow-[2px_2px_0px_#000000]">
+<span class="material-symbols-outlined text-sm font-bold">check_circle</span>
+<span>SETTLEMENT APPROVED</span>
+</div>
+</div>
+<!-- Metric Dual-Grid Display -->
+<div class="grid grid-cols-2 gap-space-sm">
+<div class="p-space-sm bg-surface-container-low flex flex-col justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-semibold">CREDITS SETTLED</span>
+<div class="mt-2">
+<div class="font-metric-display-mobile text-metric-display-mobile text-primary font-headline-md tracking-tight leading-none">5.0 <span class="font-label-mono-sm text-label-mono-sm text-on-surface font-bold">EC</span></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1 block">5.0 kWh Rooftop Solar</span>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low flex flex-col justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-semibold">OFFSET VALUE</span>
+<div class="mt-2">
+<div class="font-metric-display-mobile text-metric-display-mobile text-secondary font-headline-md tracking-tight leading-none">₹22.50</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1 block">Rate: ₹4.50 / EC</span>
+</div>
+</div>
+</div>
+<!-- Feeder Substation & Metrology Details -->
+<div class="p-space-sm bg-surface-container flex flex-col space-y-2">
+<div class="flex items-center justify-between text-on-surface">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">FEEDER NODE:</span>
+<span class="font-label-mono-sm text-label-mono-sm font-bold text-right truncate">Whitefield Zone-A Substation 11kV</span>
+</div>
+<div class="flex items-center justify-between text-on-surface">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">BATCH REF:</span>
+<span class="font-label-mono-sm text-label-mono-sm font-bold">BATCH-BESCOM-2026-Q1-09</span>
+</div>
+<div class="flex items-center justify-between text-on-surface pt-1">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">METROLOGY PROOF:</span>
+<button class="inline-flex items-center gap-1 font-label-mono-sm text-label-mono-sm text-secondary font-bold hover:underline" type="button">
+<span>0x7b4a...9f21</span>
+<span class="material-symbols-outlined text-xs">open_in_new</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Utility Bill Breakdown Card (Neo-Brutalist Statement) -->
+<div class="p-space-md bg-surface-container-lowest shadow-[4px_4px_0px_#000000] flex flex-col space-y-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface uppercase tracking-tight">UTILITY BILL STATEMENT</h2>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">CONSUMER #BES-88492 • FEB 2026 CYCLE</span>
+</div>
+<span class="material-symbols-outlined text-2xl text-on-surface-variant">receipt</span>
+</div>
+<!-- Ledger Itemized Lines -->
+<div class="flex flex-col space-y-2 bg-surface-container-low p-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface font-semibold">Previous Utility Bill Gross</span>
+<span class="font-label-mono-md text-label-mono-md text-on-surface font-bold">₹1,850.00</span>
+</div>
+<div class="flex items-center justify-between text-primary font-bold">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">energy_savings_leaf</span>
+<span class="font-body-md text-body-md">GreenGrid P2P Credit Adjustment</span>
+</div>
+<span class="font-label-mono-md text-label-mono-md">-₹22.50</span>
+</div>
+<div class="flex items-center justify-between text-primary font-bold">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">eco</span>
+<span class="font-body-md text-body-md">Fuel &amp; Surcharge Green Offset</span>
+</div>
+<span class="font-label-mono-md text-label-mono-md">-₹3.20</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-body-sm text-body-sm">State Clean Energy Cess Rebate</span>
+<span class="font-label-mono-sm text-label-mono-sm font-semibold text-primary">-₹0.00 (Standard)</span>
+</div>
+</div>
+<!-- Massive Totals Block -->
+<div class="p-space-md bg-on-surface text-surface-container-lowest shadow-[3px_3px_0px_#0047FF] flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary-fixed uppercase font-bold tracking-wider">UPDATED PAYABLE AMOUNT</span>
+<span class="font-body-sm text-body-sm text-surface-container-highest">Auto-deducted via BESCOM Gateway</span>
+</div>
+<div class="font-metric-display-mobile text-metric-display-mobile font-headline-lg-mobile text-primary-fixed tracking-tight font-extrabold text-right">
+        ₹1,824.30
+      </div>
+</div>
+</div>
+<!-- 4-Step Settlement Lifecycle Timeline -->
+<div class="p-space-md bg-surface-container-lowest shadow-[4px_4px_0px_#000000] flex flex-col space-y-space-md">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface uppercase">SETTLEMENT LIFECYCLE</h3>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 bg-primary-fixed text-on-primary-fixed font-extrabold uppercase">4/4 AUDITED</span>
+</div>
+<div class="flex flex-col space-y-space-sm relative">
+<!-- Step 1 -->
+<div class="flex items-start gap-space-sm p-space-sm bg-surface-container-low transition-all" id="step-1">
+<div class="w-8 h-8 flex-shrink-0 bg-primary text-on-primary flex items-center justify-center font-label-mono-sm text-label-mono-sm font-black shadow-[2px_2px_0px_#000000]">
+          ✓
+        </div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-md text-label-mono-md text-on-surface font-extrabold uppercase truncate">1. P2P TRADE MATCHED</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant font-bold">14:18 IST</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">
+            SolarHome_24 → Consumer_102
+          </p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex items-start gap-space-sm p-space-sm bg-surface-container-low transition-all" id="step-2">
+<div class="w-8 h-8 flex-shrink-0 bg-primary text-on-primary flex items-center justify-center font-label-mono-sm text-label-mono-sm font-black shadow-[2px_2px_0px_#000000]">
+          ✓
+        </div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-md text-label-mono-md text-on-surface font-extrabold uppercase truncate">2. SMART METER EXPORT VERIFIED</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant font-bold">14:20 IST</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">
+            Device: GG-MTR-1024 (DLMS/COSEM handshake ok)
+          </p>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex items-start gap-space-sm p-space-sm bg-surface-container-low transition-all" id="step-3">
+<div class="w-8 h-8 flex-shrink-0 bg-primary text-on-primary flex items-center justify-center font-label-mono-sm text-label-mono-sm font-black shadow-[2px_2px_0px_#000000]">
+          ✓
+        </div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-md text-label-mono-md text-on-surface font-extrabold uppercase truncate">3. DISCOM BATCH RECONCILIATION</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant font-bold">14:24 IST</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">
+            Demo DISCOM Ledger Batch #9082 cleared
+          </p>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="flex items-start gap-space-sm p-space-sm bg-surface-container-low transition-all" id="step-4">
+<div class="w-8 h-8 flex-shrink-0 bg-primary text-on-primary flex items-center justify-center font-label-mono-sm text-label-mono-sm font-black shadow-[2px_2px_0px_#000000]">
+          ✓
+        </div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-md text-label-mono-md text-on-surface font-extrabold uppercase truncate">4. BILL CREDIT APPLIED</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary font-black uppercase">CONFIRMED</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">
+            Consumer Account #BES-88492 adjusted (-₹25.70 total)
+          </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Smart Meter Telemetry Card -->
+<div class="p-space-md bg-surface-container-highest shadow-[4px_4px_0px_#000000] flex flex-col space-y-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">HARDWARE ENCLAVE TELEMETRY</span>
+<span class="material-symbols-outlined text-base text-on-surface-variant">router</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs text-center">
+<div class="p-space-xs bg-surface-container-lowest">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant block font-semibold">FREQUENCY</span>
+<span class="font-label-mono-md text-label-mono-md font-bold text-on-surface">49.98 Hz</span>
+</div>
+<div class="p-space-xs bg-surface-container-lowest">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant block font-semibold">VOLTAGE</span>
+<span class="font-label-mono-md text-label-mono-md font-bold text-on-surface">238.4 V</span>
+</div>
+<div class="p-space-xs bg-surface-container-lowest">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant block font-semibold">PWR FACTOR</span>
+<span class="font-label-mono-md text-label-mono-md font-bold text-primary">0.99 PF</span>
+</div>
+</div>
+</div>
+<!-- Hackathon Demo Simulator Controls Section -->
+<div class="p-space-md bg-inverse-surface text-inverse-on-surface shadow-[4px_4px_0px_#000000] flex flex-col space-y-space-md">
+<div class="flex items-center justify-between pb-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-tertiary-fixed text-xl">tune</span>
+<span class="font-label-mono-md text-label-mono-md uppercase tracking-wider text-surface-container-lowest font-black">DEMO UTILITY SIMULATOR CONTROLS</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 bg-error text-on-error font-extrabold uppercase">SANDBOX</span>
+</div>
+<p class="font-body-sm text-body-sm text-surface-container-highest leading-normal">
+      Test DISCOM clearing engine interactions in real time. Simulate automated bulk settlements or inject sudden feeder imbalance to verify anti-islanding safeguards.
+    </p>
+<!-- Feedback Toast Placeholder -->
+<div class="hidden p-space-sm bg-tertiary-fixed text-on-tertiary-fixed font-label-mono-sm text-label-mono-sm font-bold flex items-center gap-2" id="demo-status-banner">
+<span class="material-symbols-outlined text-sm">notifications_active</span>
+<span id="demo-status-text">Batch reconciliation triggered...</span>
+</div>
+<!-- Simulator Buttons -->
+<div class="flex flex-col gap-space-sm">
+<button class="w-full py-3 px-space-md bg-primary-fixed text-on-primary-fixed font-label-mono-md text-label-mono-md uppercase font-extrabold shadow-[4px_4px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2" id="btn-reconcile" type="button">
+<span class="material-symbols-outlined text-lg">sync_saved_locally</span>
+<span>TRIGGER BATCH RECONCILIATION</span>
+</button>
+<button class="w-full py-3 px-space-md bg-error text-on-error font-label-mono-md text-label-mono-md uppercase font-extrabold shadow-[4px_4px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2" id="btn-fault" type="button">
+<span class="material-symbols-outlined text-lg">warning</span>
+<span>INJECT DEMO GRID FAULT</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const btnReconcile = document.getElementById('btn-reconcile');
+    const btnFault = document.getElementById('btn-fault');
+    const banner = document.getElementById('demo-status-banner');
+    const statusText = document.getElementById('demo-status-text');
+
+    let isFaultActive = false;
+
+    if (btnReconcile && banner && statusText) {
+      btnReconcile.addEventListener('click', function() {
+        banner.classList.remove('hidden', 'bg-error', 'text-on-error');
+        banner.classList.add('bg-primary-fixed', 'text-on-primary-fixed');
+        statusText.innerText = 'DISCOM ENGINE: DISPATCHING 24 CONSUMER SETTLEMENTS... OK (+5.0 EC)';
+        
+        setTimeout(() => {
+          statusText.innerText = 'LEDGER UPDATED: NEW BALANCE RECORDED TO BESCOM SUB-STATION 11KV';
+        }, 1200);
+
+        setTimeout(() => {
+          banner.classList.add('hidden');
+        }, 4000);
+      });
+    }
+
+    if (btnFault && banner && statusText) {
+      btnFault.addEventListener('click', function() {
+        isFaultActive = !isFaultActive;
+        banner.classList.remove('hidden', 'bg-primary-fixed', 'text-on-primary-fixed');
+        
+        if (isFaultActive) {
+          banner.classList.add('bg-error', 'text-on-error');
+          statusText.innerText = 'SIMULATED FAULT: SUBSTATION VOLTAGE DROP (-12%). ISLANDING SAFETY TRIPPED';
+          btnFault.innerText = 'RESOLVE GRID FAULT';
+        } else {
+          banner.classList.add('bg-primary-fixed', 'text-on-primary-fixed');
+          statusText.innerText = 'FAULT CLEARED: AUTO-RECLOSER SYNCED AT 50.00 Hz';
+          btnFault.innerText = 'INJECT DEMO GRID FAULT';
+          setTimeout(() => {
+            banner.classList.add('hidden');
+          }, 2500);
+        }
+      });
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary font-bold"><div class="flex items-center justify-around h-20 px-space-xs"><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="overview" href="#"><span class="material-symbols-outlined text-2xl">solar_power</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">HOME</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="marketplace" href="#"><span class="material-symbols-outlined text-2xl">candlestick_chart</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">MARKET</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="sell-credits" href="#"><span class="material-symbols-outlined text-2xl">bolt</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">SELL</span></a><a aria-current="page" class="flex flex-col items-center justify-center w-14 h-14 transition-colors text-primary font-bold" data-path="transactions" href="#"><span class="material-symbols-outlined text-2xl">receipt_long</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">TXNS</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="profile-node" href="#"><span class="material-symbols-outlined text-2xl">account_circle</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">PROFILE</span></a></div></nav></body></html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700;800&amp;family=Space+Grotesk:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { 'colors': { 'on-surface': '#1b1b1b', 'primary-fixed': '#7ffc97', 'secondary-container': '#0448ff', 'on-tertiary-fixed': '#221b00', 'outline': '#6e7b6c', 'error-container': '#ffdad6', 'surface-container-highest': '#e2e2e2', 'tertiary-fixed-dim': '#e9c400', 'on-primary-container': '#f7fff2', 'on-secondary-fixed-variant': '#0033c0', 'surface-container-lowest': '#ffffff', 'surface-container-high': '#e8e8e8', 'on-error-container': '#93000a', 'primary-fixed-dim': '#62df7d', 'error': '#ba1a1a', 'tertiary': '#705d00', 'tertiary-fixed': '#ffe170', 'secondary-fixed': '#dde1ff', 'inverse-on-surface': '#f1f1f1', 'surface-dim': '#dadada', 'inverse-primary': '#62df7d', 'primary-container': '#00873a', 'on-tertiary-fixed-variant': '#544600', 'primary': '#006b2c', 'surface-container': '#eeeeee', 'inverse-surface': '#303030', 'on-background': '#1b1b1b', 'on-secondary': '#ffffff', 'on-primary-fixed': '#002109', 'surface-container-low': '#f3f3f3', 'on-primary': '#ffffff', 'surface-tint': '#006e2d', 'outline-variant': '#bdcaba', 'tertiary-container': '#c9a800', 'background': '#f9f9f9', 'surface-variant': '#e2e2e2', 'secondary-fixed-dim': '#b9c3ff', 'surface': '#f9f9f9', 'on-primary-fixed-variant': '#005320', 'on-surface-variant': '#3e4a3d', 'on-secondary-container': '#d6daff', 'surface-bright': '#f9f9f9', 'on-tertiary-container': '#4c3e00', 'on-tertiary': '#ffffff', 'secondary': '#0035c6', 'on-secondary-fixed': '#001257', 'on-error': '#ffffff' }, 'borderRadius': { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, 'spacing': { 'margin-desktop': '2.5rem', 'gutter-desktop': '1.5rem', 'space-lg': '1.5rem', 'space-xl': '2.5rem', 'space-xs': '0.25rem', 'margin-tablet': '1.5rem', 'gutter': '1rem', 'space-md': '1rem', 'margin': '1rem', 'space-sm': '0.5rem' }, 'fontFamily': { 'headline-md': ['Space Grotesk'], 'body-md': ['Inter'], 'headline-sm': ['Space Grotesk'], 'body-lg': ['Inter'], 'label-mono-lg': ['JetBrains Mono'], 'headline-xl-mobile': ['Space Grotesk'], 'headline-lg': ['Space Grotesk'], 'label-mono-sm': ['JetBrains Mono'], 'metric-display': ['Space Grotesk'], 'headline-xl': ['Space Grotesk'], 'body-sm': ['Inter'], 'metric-display-mobile': ['Space Grotesk'], 'headline-lg-mobile': ['Space Grotesk'], 'label-mono-md': ['JetBrains Mono'] }, 'fontSize': { 'headline-md': ['24px', { 'lineHeight': '28px', 'letterSpacing': '-0.01em', 'fontWeight': '700' }], 'body-md': ['14px', { 'lineHeight': '20px', 'fontWeight': '500' }], 'headline-sm': ['18px', { 'lineHeight': '24px', 'fontWeight': '700' }], 'body-lg': ['16px', { 'lineHeight': '24px', 'fontWeight': '500' }], 'label-mono-lg': ['14px', { 'lineHeight': '18px', 'letterSpacing': '0.02em', 'fontWeight': '700' }], 'headline-xl-mobile': ['32px', { 'lineHeight': '36px', 'letterSpacing': '-0.02em', 'fontWeight': '800' }], 'headline-lg': ['36px', { 'lineHeight': '40px', 'letterSpacing': '-0.02em', 'fontWeight': '700' }], 'label-mono-sm': ['10px', { 'lineHeight': '12px', 'letterSpacing': '0.06em', 'fontWeight': '700' }], 'metric-display': ['56px', { 'lineHeight': '56px', 'letterSpacing': '-0.04em', 'fontWeight': '800' }], 'headline-xl': ['48px', { 'lineHeight': '52px', 'letterSpacing': '-0.03em', 'fontWeight': '800' }], 'body-sm': ['12px', { 'lineHeight': '16px', 'fontWeight': '500' }], 'metric-display-mobile': ['38px', { 'lineHeight': '40px', 'letterSpacing': '-0.03em', 'fontWeight': '800' }], 'headline-lg-mobile': ['26px', { 'lineHeight': '30px', 'letterSpacing': '-0.01em', 'fontWeight': '700' }], 'label-mono-md': ['12px', { 'lineHeight': '16px', 'letterSpacing': '0.04em', 'fontWeight': '700' }] } } } }</script><style>@layer base{html,body{width:100%;margin:0;padding:0;background:#f9f9f9;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col antialiased selection:bg-primary selection:text-on-primary"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="px-gutter h-20 flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="GreenGrid Neo-Brutalist Logo" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1VO3MVv1nBeNcFXEcgvYyVzHZ4c9NuqpMhRDXLiOywIBpK1KiyRICPjopwC9dlH8wxhpkjl-K5Jyo4UQCGT8lsTXbJWTEgAND-1IVP27BAhewTRmM0zjo4gKYgIFl4HDI_p4SjNCKfrqGDAvrlzh7z6mfnkxkWmj2CVgG7-EzwpTB5cLNEW1ZlE-mpGWHjK93rfhMhU7ok4d1bQ8g4tMuppYMpycMKP1bwBmZmiZUu74Nn-KGE6JRFiTd4"/><div class="flex flex-col min-w-0"><div class="flex items-center gap-space-xs"><span class="font-label-mono-lg text-label-mono-lg tracking-wider text-on-surface uppercase truncate">GREENGRID</span></div><div class="flex items-center gap-space-xs"><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant font-bold uppercase truncate">Marketplace</span><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 bg-tertiary-fixed text-on-tertiary-fixed font-bold uppercase">ZONE-A</span></div></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><div class="hidden xs:flex flex-col items-end px-2 py-1 bg-surface-container-low"><span class="font-label-mono-sm text-label-mono-sm text-primary font-extrabold">7.6 EC</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">₹52.80</span></div><button aria-label="Notifications" class="relative w-11 h-11 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span></button><img alt="Profile" class="w-8 h-8 rounded-full object-cover flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLH9trqlD8qNdukfSM0X_ETFXs_Nwjp_WuEOw3TDTRbKBn4Xiz6aDFJoMGXK6QsN4OJ1Bg_hZ6z6OuIch-9O7bpDzNkdzKCMa7s03hHvuB6vcUw3COKisH6gZXYxanpjSHcLhF0aW2DDQ_ED27YnQkmfrHHMaDmz-PKn2RjDwMlf1wQHGth_63437r-Jy8hV-wq9d_HsLBGwfy_KDEvgYOdPzrPhykdiiycKJSFNi1MpP_Z2rClA3d"/></div></div></header><main class="flex-1 flex flex-col relative w-full pt-20 pb-28 px-gutter bg-surface"><div class="flex flex-col w-full space-y-4">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 bg-primary animate-ping inline-block"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase font-bold tracking-widest">P2P SMART DISPATCH OPEN</span>
+</div>
+<h1 class="font-headline-md text-headline-md text-on-surface uppercase tracking-tight mt-0.5">LOCAL ENERGY CREDIT MARKET</h1>
+<p class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase mt-1">Zone-A (Whitefield - Bellandur Substation Grid)</p>
+</div>
+<div class="flex flex-col space-y-2.5">
+<div class="relative w-full shadow-[4px_4px_0px_#000000]">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="w-full pl-10 pr-10 py-3 bg-surface-container-lowest text-on-surface font-label-mono-md text-label-mono-md placeholder:text-on-surface-variant/70 focus:outline-none focus:bg-surface-container-low transition-all" id="marketSearchInput" placeholder="Filter by prosumer, zone or capacity..." style="border: 3px solid #000000;" type="text"/>
+<button class="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-on-surface hidden" id="clearSearchBtn" onclick="document.getElementById('marketSearchInput').value=''; this.classList.add('hidden');" type="button">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+<div class="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none -mx-gutter px-gutter">
+<button class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-lowest text-on-surface font-label-mono-sm text-label-mono-sm uppercase active:translate-x-[2px] active:translate-y-[2px] transition-transform shadow-[2px_2px_0px_#000000]" style="border: 2px solid #000000;" type="button">
+<span>ALL ZONES</span>
+<span class="material-symbols-outlined text-sm">arrow_drop_down</span>
+</button>
+<button class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-tertiary-fixed text-on-tertiary-fixed font-label-mono-sm text-label-mono-sm uppercase active:translate-x-[2px] active:translate-y-[2px] transition-transform shadow-[2px_2px_0px_#000000]" style="border: 2px solid #000000;" type="button">
+<span class="material-symbols-outlined text-sm">swap_vert</span>
+<span>PRICE: LOW TO HIGH</span>
+</button>
+<button class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-surface-container-lowest text-on-surface font-label-mono-sm text-label-mono-sm uppercase active:translate-x-[2px] active:translate-y-[2px] transition-transform shadow-[2px_2px_0px_#000000]" style="border: 2px solid #000000;" type="button">
+<span>MIN 3 EC</span>
+</button>
+<button class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-primary-fixed text-on-primary-fixed font-label-mono-sm text-label-mono-sm uppercase active:translate-x-[2px] active:translate-y-[2px] transition-transform shadow-[2px_2px_0px_#000000]" style="border: 2px solid #000000;" type="button">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span>METER VERIFIED</span>
+</button>
+</div>
+</div>
+<div class="relative overflow-hidden bg-tertiary-fixed text-on-tertiary-fixed p-3 shadow-[4px_4px_0px_#000000]" style="border: 3px solid #000000;">
+<div class="flex items-start gap-2.5">
+<div class="w-7 h-7 flex items-center justify-center bg-on-tertiary-fixed text-tertiary-fixed flex-shrink-0 shadow-[2px_2px_0px_#000000]" style="border: 2px solid #000000;">
+<span class="material-symbols-outlined text-base">bolt</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-1 mb-0.5">
+<span class="font-label-mono-sm text-label-mono-sm font-bold uppercase tracking-wider text-on-tertiary-fixed">LIVE MARKET TICKER</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 bg-on-tertiary-fixed text-tertiary-fixed font-extrabold uppercase">AUTO-POLL 3s</span>
+</div>
+<p class="font-label-mono-md text-label-mono-md font-bold uppercase leading-tight tracking-tight">
+          DYNAMIC INDEX: ₹4.25 - ₹4.75 / EC
+        </p>
+<div class="flex items-center gap-2 mt-1 pt-1 border-t-2 border-on-tertiary-fixed/20">
+<span class="inline-block w-2 h-2 bg-primary"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-tertiary-fixed font-semibold uppercase">48.6 EC LISTED TODAY IN YOUR ZONE</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<span class="font-label-mono-sm text-label-mono-sm font-bold uppercase text-on-surface-variant">REAL-TIME TELEMETRY LISTINGS (3)</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 bg-surface-container-high text-on-surface font-semibold uppercase">DISCOM NODE 560066</span>
+</div>
+<div class="flex flex-col space-y-4">
+<div class="bg-surface-container-lowest text-on-surface p-4 relative shadow-[4px_4px_0px_#000000] hover:translate-x-[-1px] hover:translate-y-[-1px] transition-all" style="border: 3px solid #000000;">
+<div class="absolute -top-3 right-3 bg-primary-fixed text-on-primary-fixed px-2 py-0.5 font-label-mono-sm text-label-mono-sm font-extrabold uppercase shadow-[2px_2px_0px_#000000]" style="border: 2px solid #000000;">
+        ★ BEST MATCH
+      </div>
+<div class="flex items-start justify-between gap-2 mb-3">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm uppercase tracking-tight truncate">SolarHome_24</span>
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-primary text-on-primary font-label-mono-sm text-label-mono-sm uppercase font-bold" style="border: 1px solid #000000;">
+              VERIFIED SMART METER ✓
+            </span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-mono-sm text-label-mono-sm mt-0.5">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="font-bold uppercase">ZONE-A (0.8 km)</span>
+<span>•</span>
+<span class="text-primary font-bold">GRID SYNCED</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 p-2.5 bg-surface-container-low mb-3" style="border: 2px solid #000000;">
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">AVAILABLE</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-md text-headline-md font-bold leading-none">5.0</span>
+<span class="font-label-mono-sm text-label-mono-sm font-extrabold text-primary">EC</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">UNIT PRICE</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-md text-headline-md font-bold leading-none text-on-surface">₹4.25</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">/ EC</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between py-1 px-1 mb-3 text-on-surface font-label-mono-sm text-label-mono-sm">
+<span class="font-bold uppercase">TOTAL TRANSACTION</span>
+<span class="font-label-mono-md text-label-mono-md font-extrabold text-primary">₹21.25 <span class="text-on-surface-variant font-medium">(5 kWh Equiv)</span></span>
+</div>
+<div class="flex items-center justify-between pt-2 pb-3 border-t-2 border-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm mb-3">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-primary">shield</span>
+<span class="font-bold text-on-surface">98% RELIABILITY</span>
+</div>
+<span class="font-bold uppercase">42 TRADES SETTLED</span>
+</div>
+<button class="w-full py-3 bg-tertiary-fixed text-on-tertiary-fixed font-headline-sm text-headline-sm uppercase font-extrabold flex items-center justify-center gap-2 active:translate-x-[3px] active:translate-y-[3px] transition-all shadow-[4px_4px_0px_#000000]" onclick="handleBuyClick(this, 'SolarHome_24', '5.0', '₹21.25')" style="border: 3px solid #000000;" type="button">
+<span>BUY CREDITS</span>
+<span class="material-symbols-outlined text-xl">bolt</span>
+</button>
+</div>
+<div class="bg-surface-container-lowest text-on-surface p-4 relative shadow-[4px_4px_0px_#000000] hover:translate-x-[-1px] hover:translate-y-[-1px] transition-all" style="border: 3px solid #000000;">
+<div class="flex items-start justify-between gap-2 mb-3">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm uppercase tracking-tight truncate">SunRoof_08</span>
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm uppercase font-bold" style="border: 1px solid #000000;">
+              VERIFIED METER ✓
+            </span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-mono-sm text-label-mono-sm mt-0.5">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="font-bold uppercase">ZONE-A (1.4 km)</span>
+<span>•</span>
+<span class="text-on-surface-variant font-semibold">FEED-IN STEADY</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 p-2.5 bg-surface-container-low mb-3" style="border: 2px solid #000000;">
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">AVAILABLE</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-md text-headline-md font-bold leading-none">3.0</span>
+<span class="font-label-mono-sm text-label-mono-sm font-extrabold text-primary">EC</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">UNIT PRICE</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-md text-headline-md font-bold leading-none text-on-surface">₹4.50</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">/ EC</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between py-1 px-1 mb-3 text-on-surface font-label-mono-sm text-label-mono-sm">
+<span class="font-bold uppercase">TOTAL TRANSACTION</span>
+<span class="font-label-mono-md text-label-mono-md font-extrabold text-primary">₹13.50 <span class="text-on-surface-variant font-medium">(3 kWh Equiv)</span></span>
+</div>
+<div class="flex items-center justify-between pt-2 pb-3 border-t-2 border-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm mb-3">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-primary">verified_user</span>
+<span class="font-bold text-on-surface">94% RELIABILITY</span>
+</div>
+<span class="font-bold uppercase">19 TRADES SETTLED</span>
+</div>
+<button class="w-full py-3 bg-tertiary-fixed text-on-tertiary-fixed font-headline-sm text-headline-sm uppercase font-extrabold flex items-center justify-center gap-2 active:translate-x-[3px] active:translate-y-[3px] transition-all shadow-[4px_4px_0px_#000000]" onclick="handleBuyClick(this, 'SunRoof_08', '3.0', '₹13.50')" style="border: 3px solid #000000;" type="button">
+<span>BUY CREDITS</span>
+<span class="material-symbols-outlined text-xl">bolt</span>
+</button>
+</div>
+<div class="bg-surface-container-lowest text-on-surface p-4 relative shadow-[4px_4px_0px_#000000] hover:translate-x-[-1px] hover:translate-y-[-1px] transition-all" style="border: 3px solid #000000;">
+<div class="flex items-start justify-between gap-2 mb-3">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm uppercase tracking-tight truncate">GreenHouse_12</span>
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-secondary-fixed text-on-secondary-fixed font-label-mono-sm text-label-mono-sm uppercase font-bold" style="border: 1px solid #000000;">
+              HIGH CAPACITY
+            </span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-mono-sm text-label-mono-sm mt-0.5">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="font-bold uppercase">ZONE-B (2.1 km)</span>
+<span>•</span>
+<span class="text-on-surface-variant font-semibold">INDUSTRIAL HYBRID</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 p-2.5 bg-surface-container-low mb-3" style="border: 2px solid #000000;">
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">AVAILABLE</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-md text-headline-md font-bold leading-none">8.0</span>
+<span class="font-label-mono-sm text-label-mono-sm font-extrabold text-primary">EC</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">UNIT PRICE</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-md text-headline-md font-bold leading-none text-on-surface">₹4.75</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">/ EC</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between py-1 px-1 mb-3 text-on-surface font-label-mono-sm text-label-mono-sm">
+<span class="font-bold uppercase">TOTAL TRANSACTION</span>
+<span class="font-label-mono-md text-label-mono-md font-extrabold text-primary">₹38.00 <span class="text-on-surface-variant font-medium">(8 kWh Equiv)</span></span>
+</div>
+<div class="flex items-center justify-between pt-2 pb-3 border-t-2 border-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm mb-3">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-primary">verified_user</span>
+<span class="font-bold text-on-surface">99% RELIABILITY</span>
+</div>
+<span class="font-bold uppercase">108 TRADES SETTLED</span>
+</div>
+<button class="w-full py-3 bg-tertiary-fixed text-on-tertiary-fixed font-headline-sm text-headline-sm uppercase font-extrabold flex items-center justify-center gap-2 active:translate-x-[3px] active:translate-y-[3px] transition-all shadow-[4px_4px_0px_#000000]" onclick="handleBuyClick(this, 'GreenHouse_12', '8.0', '₹38.00')" style="border: 3px solid #000000;" type="button">
+<span>BUY CREDITS</span>
+<span class="material-symbols-outlined text-xl">bolt</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container-low p-3 shadow-[3px_3px_0px_#000000] mt-2 flex items-start gap-2.5" style="border: 2px dashed #000000;">
+<span class="material-symbols-outlined text-on-surface text-xl flex-shrink-0 mt-0.5">info</span>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm font-extrabold uppercase text-on-surface">IMPORTANT GRID NOTICE</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
+        Physical electricity is delivered seamlessly via existing DISCOM lines. Purchased credits offset your utility consumption 1:1.
+      </p>
+</div>
+</div>
+<div class="fixed bottom-24 left-4 right-4 z-50 transform translate-y-32 opacity-0 transition-all duration-300 pointer-events-none" id="toastConfirmation">
+<div class="bg-primary-fixed text-on-primary-fixed p-3 shadow-[4px_4px_0px_#000000] flex items-center justify-between gap-2" style="border: 3px solid #000000;">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-xl text-primary font-bold">check_circle</span>
+<span class="font-label-mono-sm text-label-mono-sm font-bold uppercase truncate" id="toastMessage">CREDITS LOCKED • ROUTING DISPATCH</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm bg-on-primary-fixed text-primary-fixed px-1.5 py-0.5 uppercase font-bold">SYNCED</span>
+</div>
+</div>
+</div>
+<script>
+  function handleBuyClick(btn, prosumer, amount, total) {
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `
+      <span class="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+      <span>RESERVING...</span>
+    `;
+    
+    setTimeout(() => {
+      btn.innerHTML = `
+        <span class="material-symbols-outlined text-xl">check</span>
+        <span>ACQUIRED!</span>
+      `;
+      btn.classList.remove('bg-tertiary-fixed', 'text-on-tertiary-fixed');
+      btn.classList.add('bg-primary', 'text-on-primary');
+
+      const toast = document.getElementById('toastConfirmation');
+      const toastMsg = document.getElementById('toastMessage');
+      if (toast && toastMsg) {
+        toastMsg.textContent = `${amount} EC RESERVED FROM ${prosumer} (${total})`;
+        toast.classList.remove('translate-y-32', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+
+        setTimeout(() => {
+          toast.classList.add('translate-y-32', 'opacity-0');
+          toast.classList.remove('translate-y-0', 'opacity-100');
+        }, 2800);
+      }
+
+      setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.classList.remove('bg-primary', 'text-on-primary');
+        btn.classList.add('bg-tertiary-fixed', 'text-on-tertiary-fixed');
+        btn.disabled = false;
+      }, 3500);
+    }, 700);
+  }
+
+  const searchInput = document.getElementById('marketSearchInput');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  if (searchInput && clearBtn) {
+    searchInput.addEventListener('input', (e) => {
+      if (e.target.value.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+    });
+  }
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary font-bold"><div class="flex items-center justify-around h-20 px-space-xs"><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="overview" href="#"><span class="material-symbols-outlined text-2xl">solar_power</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">HOME</span></a><a aria-current="page" class="flex flex-col items-center justify-center w-14 h-14 transition-colors text-primary font-bold" data-path="marketplace" href="#"><span class="material-symbols-outlined text-2xl">candlestick_chart</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">MARKET</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="sell-credits" href="#"><span class="material-symbols-outlined text-2xl">bolt</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">SELL</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="transactions" href="#"><span class="material-symbols-outlined text-2xl">receipt_long</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">TXNS</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="profile-node" href="#"><span class="material-symbols-outlined text-2xl">account_circle</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">PROFILE</span></a></div></nav></body></html>

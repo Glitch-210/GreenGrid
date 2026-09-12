@@ -1,17 +1,20 @@
 import type { JSX } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
+import { AppShell } from "./components/layout/AppShell";
 import LoginPage from "./features/auth/LoginPage";
 import RegisterPage from "./features/auth/RegisterPage";
 import ProsumerDashboard from "./features/prosumer/ProsumerDashboard";
 import ProsumerCredits from "./features/prosumer/ProsumerCredits";
 import ProsumerSell from "./features/prosumer/ProsumerSell";
 import ConsumerDashboard from "./features/consumer/ConsumerDashboard";
-import ConsumerMarketplace from "./features/consumer/ConsumerMarketplace";
 import ConsumerCheckout from "./features/consumer/ConsumerCheckout";
-import TransactionDetail from "./features/consumer/TransactionDetail";
+import ConsumerTransactions from "./features/consumer/ConsumerTransactions";
+import Marketplace from "./features/marketplace/Marketplace";
+import SettlementDetail from "./features/transactions/SettlementDetail";
 import UtilityDashboard from "./features/utility/UtilityDashboard";
 import AdminDashboard from "./features/admin/AdminDashboard";
+import ProfilePage from "./features/profile/ProfilePage";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated } = useAuth();
@@ -24,17 +27,29 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      <Route path="/prosumer" element={<RequireAuth><ProsumerDashboard /></RequireAuth>} />
-      <Route path="/prosumer/credits" element={<RequireAuth><ProsumerCredits /></RequireAuth>} />
-      <Route path="/prosumer/sell" element={<RequireAuth><ProsumerSell /></RequireAuth>} />
+      <Route
+        element={
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        }
+      >
+        <Route path="/prosumer" element={<ProsumerDashboard />} />
+        <Route path="/prosumer/credits" element={<ProsumerCredits />} />
+        <Route path="/prosumer/sell" element={<ProsumerSell />} />
 
-      <Route path="/consumer" element={<RequireAuth><ConsumerDashboard /></RequireAuth>} />
-      <Route path="/consumer/marketplace" element={<RequireAuth><ConsumerMarketplace /></RequireAuth>} />
-      <Route path="/consumer/checkout" element={<RequireAuth><ConsumerCheckout /></RequireAuth>} />
-      <Route path="/consumer/transactions/:id" element={<RequireAuth><TransactionDetail /></RequireAuth>} />
+        <Route path="/consumer" element={<ConsumerDashboard />} />
+        <Route path="/consumer/checkout" element={<ConsumerCheckout />} />
+        <Route path="/consumer/transactions" element={<ConsumerTransactions />} />
 
-      <Route path="/utility" element={<RequireAuth><UtilityDashboard /></RequireAuth>} />
-      <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+        <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/transactions/:id" element={<SettlementDetail />} />
+
+        <Route path="/utility" element={<UtilityDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+
+        <Route path="/profile" element={<ProfilePage />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

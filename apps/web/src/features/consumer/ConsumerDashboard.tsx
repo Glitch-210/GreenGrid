@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { PageShell } from "../../components/ui/PageShell";
-import { Card } from "../../components/ui/Card";
+import { MetricTile } from "../../components/ui/MetricTile";
+import { Button } from "../../components/ui/Button";
 import { useApiQuery } from "../../hooks/useApi";
 import { formatINR, formatKwh } from "../../lib/format";
 
@@ -15,26 +15,25 @@ export default function ConsumerDashboard() {
   const { data } = useApiQuery<ConsumerDashboardData>(["dashboard", "consumer"], "/users/dashboard");
 
   return (
-    <PageShell title="Consumer dashboard">
+    <div>
+      <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">CONSUMER OVERVIEW</h1>
+      <p className="mb-4 font-mono text-xs uppercase tracking-wider text-on-surface-variant">
+        P2P purchases &amp; DISCOM bill savings
+      </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <p className="text-sm text-neutral-400">Purchased</p>
-          <p className="text-2xl font-semibold">{data ? formatKwh(data.totalPurchasedKwh) : "—"}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-neutral-400">Total spent</p>
-          <p className="text-2xl font-semibold">{data ? formatINR(data.totalSpent) : "—"}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-neutral-400">Bill adjustment (savings)</p>
-          <p className="text-2xl font-semibold text-energy-green">{data ? formatINR(data.totalBillAdjustment) : "—"}</p>
-        </Card>
+        <MetricTile label="Purchased" value={data ? formatKwh(data.totalPurchasedKwh) : "—"} />
+        <MetricTile label="Total spent" value={data ? formatINR(data.totalSpent) : "—"} />
+        <MetricTile
+          label="Bill adjustment (savings)"
+          value={data ? formatINR(data.totalBillAdjustment) : "—"}
+          delta={`${data?.transactionCount ?? 0} transactions`}
+        />
       </div>
       <div className="mt-6">
-        <Link className="text-energy-green underline" to="/consumer/marketplace">
-          Browse marketplace
+        <Link to="/marketplace">
+          <Button variant="solar">Browse marketplace</Button>
         </Link>
       </div>
-    </PageShell>
+    </div>
   );
 }

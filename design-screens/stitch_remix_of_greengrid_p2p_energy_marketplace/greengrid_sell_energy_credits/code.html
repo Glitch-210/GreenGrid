@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700;800&amp;family=Space+Grotesk:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { 'colors': { 'on-surface': '#1b1b1b', 'primary-fixed': '#7ffc97', 'secondary-container': '#0448ff', 'on-tertiary-fixed': '#221b00', 'outline': '#6e7b6c', 'error-container': '#ffdad6', 'surface-container-highest': '#e2e2e2', 'tertiary-fixed-dim': '#e9c400', 'on-primary-container': '#f7fff2', 'on-secondary-fixed-variant': '#0033c0', 'surface-container-lowest': '#ffffff', 'surface-container-high': '#e8e8e8', 'on-error-container': '#93000a', 'primary-fixed-dim': '#62df7d', 'error': '#ba1a1a', 'tertiary': '#705d00', 'tertiary-fixed': '#ffe170', 'secondary-fixed': '#dde1ff', 'inverse-on-surface': '#f1f1f1', 'surface-dim': '#dadada', 'inverse-primary': '#62df7d', 'primary-container': '#00873a', 'on-tertiary-fixed-variant': '#544600', 'primary': '#006b2c', 'surface-container': '#eeeeee', 'inverse-surface': '#303030', 'on-background': '#1b1b1b', 'on-secondary': '#ffffff', 'on-primary-fixed': '#002109', 'surface-container-low': '#f3f3f3', 'on-primary': '#ffffff', 'surface-tint': '#006e2d', 'outline-variant': '#bdcaba', 'tertiary-container': '#c9a800', 'background': '#f9f9f9', 'surface-variant': '#e2e2e2', 'secondary-fixed-dim': '#b9c3ff', 'surface': '#f9f9f9', 'on-primary-fixed-variant': '#005320', 'on-surface-variant': '#3e4a3d', 'on-secondary-container': '#d6daff', 'surface-bright': '#f9f9f9', 'on-tertiary-container': '#4c3e00', 'on-tertiary': '#ffffff', 'secondary': '#0035c6', 'on-secondary-fixed': '#001257', 'on-error': '#ffffff' }, 'borderRadius': { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, 'spacing': { 'margin-desktop': '2.5rem', 'gutter-desktop': '1.5rem', 'space-lg': '1.5rem', 'space-xl': '2.5rem', 'space-xs': '0.25rem', 'margin-tablet': '1.5rem', 'gutter': '1rem', 'space-md': '1rem', 'margin': '1rem', 'space-sm': '0.5rem' }, 'fontFamily': { 'headline-md': ['Space Grotesk'], 'body-md': ['Inter'], 'headline-sm': ['Space Grotesk'], 'body-lg': ['Inter'], 'label-mono-lg': ['JetBrains Mono'], 'headline-xl-mobile': ['Space Grotesk'], 'headline-lg': ['Space Grotesk'], 'label-mono-sm': ['JetBrains Mono'], 'metric-display': ['Space Grotesk'], 'headline-xl': ['Space Grotesk'], 'body-sm': ['Inter'], 'metric-display-mobile': ['Space Grotesk'], 'headline-lg-mobile': ['Space Grotesk'], 'label-mono-md': ['JetBrains Mono'] }, 'fontSize': { 'headline-md': ['24px', { 'lineHeight': '28px', 'letterSpacing': '-0.01em', 'fontWeight': '700' }], 'body-md': ['14px', { 'lineHeight': '20px', 'fontWeight': '500' }], 'headline-sm': ['18px', { 'lineHeight': '24px', 'fontWeight': '700' }], 'body-lg': ['16px', { 'lineHeight': '24px', 'fontWeight': '500' }], 'label-mono-lg': ['14px', { 'lineHeight': '18px', 'letterSpacing': '0.02em', 'fontWeight': '700' }], 'headline-xl-mobile': ['32px', { 'lineHeight': '36px', 'letterSpacing': '-0.02em', 'fontWeight': '800' }], 'headline-lg': ['36px', { 'lineHeight': '40px', 'letterSpacing': '-0.02em', 'fontWeight': '700' }], 'label-mono-sm': ['10px', { 'lineHeight': '12px', 'letterSpacing': '0.06em', 'fontWeight': '700' }], 'metric-display': ['56px', { 'lineHeight': '56px', 'letterSpacing': '-0.04em', 'fontWeight': '800' }], 'headline-xl': ['48px', { 'lineHeight': '52px', 'letterSpacing': '-0.03em', 'fontWeight': '800' }], 'body-sm': ['12px', { 'lineHeight': '16px', 'fontWeight': '500' }], 'metric-display-mobile': ['38px', { 'lineHeight': '40px', 'letterSpacing': '-0.03em', 'fontWeight': '800' }], 'headline-lg-mobile': ['26px', { 'lineHeight': '30px', 'letterSpacing': '-0.01em', 'fontWeight': '700' }], 'label-mono-md': ['12px', { 'lineHeight': '16px', 'letterSpacing': '0.04em', 'fontWeight': '700' }] } } } }</script><style>@layer base{html,body{width:100%;margin:0;padding:0;background:#f9f9f9;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col antialiased selection:bg-primary selection:text-on-primary"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="px-gutter h-20 flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="GreenGrid Neo-Brutalist Logo" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1VO3MVv1nBeNcFXEcgvYyVzHZ4c9NuqpMhRDXLiOywIBpK1KiyRICPjopwC9dlH8wxhpkjl-K5Jyo4UQCGT8lsTXbJWTEgAND-1IVP27BAhewTRmM0zjo4gKYgIFl4HDI_p4SjNCKfrqGDAvrlzh7z6mfnkxkWmj2CVgG7-EzwpTB5cLNEW1ZlE-mpGWHjK93rfhMhU7ok4d1bQ8g4tMuppYMpycMKP1bwBmZmiZUu74Nn-KGE6JRFiTd4"/><div class="flex flex-col min-w-0"><div class="flex items-center gap-space-xs"><span class="font-label-mono-lg text-label-mono-lg tracking-wider text-on-surface uppercase truncate">GREENGRID</span></div><div class="flex items-center gap-space-xs"><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant font-bold uppercase truncate">Sell Credits</span><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 bg-tertiary-fixed text-on-tertiary-fixed font-bold uppercase">ZONE-A</span></div></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><div class="hidden xs:flex flex-col items-end px-2 py-1 bg-surface-container-low"><span class="font-label-mono-sm text-label-mono-sm text-primary font-extrabold">7.6 EC</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">₹52.80</span></div><button aria-label="Notifications" class="relative w-11 h-11 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span></button><img alt="Profile" class="w-8 h-8 rounded-full object-cover flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLH9trqlD8qNdukfSM0X_ETFXs_Nwjp_WuEOw3TDTRbKBn4Xiz6aDFJoMGXK6QsN4OJ1Bg_hZ6z6OuIch-9O7bpDzNkdzKCMa7s03hHvuB6vcUw3COKisH6gZXYxanpjSHcLhF0aW2DDQ_ED27YnQkmfrHHMaDmz-PKn2RjDwMlf1wQHGth_63437r-Jy8hV-wq9d_HsLBGwfy_KDEvgYOdPzrPhykdiiycKJSFNi1MpP_Z2rClA3d"/></div></div></header><main class="flex-1 flex flex-col relative w-full pt-20 pb-28 px-gutter bg-surface"><div class="flex flex-col w-full space-y-space-md">
+<!-- Live Feeder Metrology Pulse -->
+<div class="flex items-center justify-between px-3 py-1.5 bg-tertiary-fixed text-on-tertiary-fixed shadow-[2px_2px_0px_#000000]">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span class="font-label-mono-sm text-label-mono-sm tracking-wider uppercase truncate">FEEDER TELEMETRY ACTIVE // NODE-981-WFD</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm font-bold">50.04 Hz</span>
+</div>
+<!-- Header Section with Metrology Badge -->
+<div class="flex flex-col gap-space-xs">
+<div class="inline-flex items-center gap-1.5 self-start px-2 py-0.5 bg-primary-fixed text-on-primary-fixed shadow-[2px_2px_0px_#000000]">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-mono-sm text-label-mono-sm font-extrabold uppercase">METER VERIFIED SURPLUS: 7.6 EC AVAILABLE</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tight uppercase">SELL SURPLUS ENERGY</h1>
+</div>
+<!-- Prosumer Solar Status Banner with Metrology Visual -->
+<div class="relative bg-surface-container-lowest p-space-md shadow-[4px_4px_0px_#000000]">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 flex-shrink-0 bg-primary-fixed flex items-center justify-center text-on-primary-fixed shadow-[2px_2px_0px_#000000]">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">solar_power</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-md text-label-mono-md text-on-surface font-bold uppercase">GG-MTR-1024</span>
+<span class="px-1.5 py-0.5 bg-primary text-on-primary font-label-mono-sm text-label-mono-sm font-bold">SYNCED</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+          Smart Meter GG-MTR-1024 has validated <strong>7.6 kWh</strong> surplus exported to the local feeder channel.
+        </p>
+</div>
+</div>
+<div class="mt-3 pt-2.5 bg-surface-container flex items-center justify-between px-2.5 py-1.5 text-on-surface">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Bi-Directional Grid Injection</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary font-extrabold">+1.42 kW Current Peak</span>
+</div>
+</div>
+<!-- Configurator Form Container -->
+<div class="flex flex-col space-y-space-md">
+<!-- Field 1: Quantity to Sell -->
+<div class="bg-surface-container-lowest p-space-md shadow-[4px_4px_0px_#000000]">
+<div class="flex justify-between items-center mb-2">
+<label class="font-label-mono-md text-label-mono-md uppercase text-on-surface font-extrabold tracking-wide" for="ec-input">
+          QUANTITY TO SELL (EC)
+        </label>
+<span class="font-label-mono-sm text-label-mono-sm px-1 bg-surface-container-high text-on-surface">1 EC = 1 kWh</span>
+</div>
+<div class="flex items-stretch gap-2 mb-3">
+<button aria-label="Decrease quantity" class="w-12 h-12 flex items-center justify-center bg-surface-container-highest text-on-surface font-headline-md text-headline-md shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#000000] transition-transform" id="qty-dec" type="button">
+          −
+        </button>
+<div class="relative flex-1">
+<input class="w-full h-12 px-3 bg-surface-container-lowest text-center font-label-mono-lg text-label-mono-lg font-bold text-on-surface shadow-[3px_3px_0px_#000000] focus:outline-none focus:bg-surface-container-low" id="ec-input" max="7.6" min="0.5" step="0.1" type="number" value="5.0"/>
+<span class="absolute right-3 top-3.5 font-label-mono-sm text-label-mono-sm text-on-surface-variant pointer-events-none font-bold">EC</span>
+</div>
+<button aria-label="Increase quantity" class="w-12 h-12 flex items-center justify-center bg-surface-container-highest text-on-surface font-headline-md text-headline-md shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#000000] transition-transform" id="qty-inc" type="button">
+          +
+        </button>
+</div>
+<!-- Quick Select Pills -->
+<div class="flex items-center gap-2">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Presets:</span>
+<button class="preset-btn px-2.5 py-1 bg-tertiary-fixed text-on-tertiary-fixed font-label-mono-sm text-label-mono-sm font-extrabold shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" data-val="7.6" type="button">
+          MAX: 7.6
+        </button>
+<button class="preset-btn px-2.5 py-1 bg-surface-container-highest text-on-surface font-label-mono-sm text-label-mono-sm font-bold shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" data-val="5.0" type="button">
+          5.0
+        </button>
+<button class="preset-btn px-2.5 py-1 bg-surface-container-highest text-on-surface font-label-mono-sm text-label-mono-sm font-bold shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" data-val="2.0" type="button">
+          2.0
+        </button>
+</div>
+</div>
+<!-- Field 2: Price Per Credit -->
+<div class="bg-surface-container-lowest p-space-md shadow-[4px_4px_0px_#000000]">
+<div class="flex justify-between items-center mb-2">
+<label class="font-label-mono-md text-label-mono-md uppercase text-on-surface font-extrabold tracking-wide" for="price-input">
+          PRICE PER CREDIT (₹ / EC)
+        </label>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 bg-primary-fixed text-on-primary-fixed font-bold">AVG ₹4.30</span>
+</div>
+<div class="relative mb-2">
+<span class="absolute left-3.5 top-3 font-label-mono-lg text-label-mono-lg font-bold text-on-surface">₹</span>
+<input class="w-full h-12 pl-8 pr-14 bg-surface-container-lowest font-label-mono-lg text-label-mono-lg font-bold text-on-surface shadow-[3px_3px_0px_#000000] focus:outline-none focus:bg-surface-container-low" id="price-input" max="5.50" min="3.80" step="0.05" type="number" value="4.25"/>
+<span class="absolute right-3.5 top-3.5 font-label-mono-sm text-label-mono-sm text-on-surface-variant font-bold">/ EC</span>
+</div>
+<div class="p-2 bg-surface-container-low flex items-center justify-between text-on-surface">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Recommended Corridor</span>
+<span class="font-label-mono-sm text-label-mono-sm font-bold">Min: ₹3.80 · Max: ₹5.50</span>
+</div>
+</div>
+<!-- Field 3: Local Feeder Zone -->
+<div class="bg-surface-container-lowest p-space-md shadow-[4px_4px_0px_#000000]">
+<label class="block font-label-mono-md text-label-mono-md uppercase text-on-surface font-extrabold mb-2" for="zone-select">
+        LOCAL FEEDER ZONE
+      </label>
+<div class="relative">
+<select class="w-full h-12 px-3 pr-10 bg-surface-container-lowest font-label-mono-md text-label-mono-md font-bold text-on-surface shadow-[3px_3px_0px_#000000] focus:outline-none appearance-none cursor-pointer" id="zone-select">
+<option value="ZONE-A">ZONE-A: Whitefield Feeder Sub-4 (Optimal Transfer)</option>
+<option value="ZONE-B">ZONE-B: Mahadevapura Node 2 (Loss: +1.2%)</option>
+<option value="ZONE-C">ZONE-C: Hoodi Industrial Ring (High Demand)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface">
+          expand_more
+        </span>
+</div>
+<div class="mt-2 flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm text-primary">cell_tower</span>
+<span class="font-label-mono-sm text-label-mono-sm">Zero wheeling charges applicable within Zone-A</span>
+</div>
+</div>
+<!-- Real-Time Settlement Calculation Box -->
+<div class="bg-surface-container-lowest p-space-md shadow-[5px_5px_0px_#000000]">
+<div class="flex items-center justify-between pb-2 mb-3 bg-surface-container-high px-2 py-1.5 text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base">calculate</span>
+<span class="font-label-mono-sm text-label-mono-sm font-extrabold uppercase">SETTLEMENT ESCROW LEDGER</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 bg-tertiary-fixed text-on-tertiary-fixed font-bold">REAL-TIME</span>
+</div>
+<div class="space-y-2 font-label-mono-md text-label-mono-md text-on-surface">
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Allocated Quantity:</span>
+<span class="font-bold" id="disp-qty">5.0 EC</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Unit Cleared Price:</span>
+<span class="font-bold" id="disp-price">₹4.25 / EC</span>
+</div>
+<div class="flex justify-between items-center pt-1">
+<span class="text-on-surface font-semibold">Gross Sale Value:</span>
+<span class="font-bold" id="disp-gross">₹21.25</span>
+</div>
+<div class="flex justify-between items-center text-error">
+<span class="text-body-sm">DISCOM &amp; Platform Fee (5%):</span>
+<span class="font-bold" id="disp-fee">-₹1.06</span>
+</div>
+<div class="my-2 p-3 bg-primary-fixed text-on-primary-fixed shadow-[3px_3px_0px_#000000]">
+<div class="font-label-mono-sm text-label-mono-sm font-bold uppercase tracking-wider">Estimated Net Prosumer Payout</div>
+<div class="flex items-baseline justify-between mt-1">
+<span class="font-headline-md text-headline-md text-on-primary-fixed font-extrabold" id="disp-net">₹20.19</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase font-bold">AUTO-ROUTED</span>
+</div>
+</div>
+<div class="flex items-center gap-2 pt-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-base text-secondary">payments</span>
+<span class="font-body-sm text-body-sm">Settlement: Direct DISCOM Bill Credit / UPI Auto-Payout</span>
+</div>
+</div>
+</div>
+<!-- Security & Validation Indicators -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 px-3 py-2 bg-primary-fixed text-on-primary-fixed shadow-[2px_2px_0px_#000000]">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-mono-sm text-label-mono-sm font-bold uppercase">SURPLUS SECURED ON GRID METROLOGY LEDGER</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 bg-secondary-fixed text-on-secondary-fixed shadow-[2px_2px_0px_#000000]">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-label-mono-sm text-label-mono-sm font-bold uppercase">SMART CONTRACT READY (P2P ESCROW ACTIVE)</span>
+</div>
+</div>
+<!-- Prosumer Context Visual Snapshot -->
+<div class="relative overflow-hidden bg-surface-container-high shadow-[4px_4px_0px_#000000] p-3">
+<div class="flex items-center gap-3">
+<img class="w-16 h-16 object-cover flex-shrink-0 shadow-[2px_2px_0px_#000000]" data-alt="Rooftop solar panel array with hyper-modern microinverters under bright sun, high-contrast industrial clean tech photograph with deep shadows and clean edges" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEWZCddAJo686QhQzl5e7UtSKFT2-2D9Rcxa7yjQURgQAv4eT-KdhQ1hujJk3a4vgg-T6PaEDspsCwCDQT5w0LnMCJiK53wykNxrz14V0_OgqeIvo75dCJHEPjtg6HmsQW-hEuf7kaLFBCtMPzIPxSQZ1JEYFlSqp_1_Dq-O4JtqIz87eMvQTeIJGbbHbJK6qeYQerYonOG1irawPUi_lxkdkp0w1W-voeAZBcaFsYdo3F4-ueRbip"/>
+<div class="min-w-0 flex-1">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase block">Generating Array</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold block truncate">Array 4B (3.2 kWp Monocrystalline)</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary font-bold">100% Inverter Efficiency</span>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-3 pt-2">
+<button class="w-full h-14 bg-primary-fixed text-on-primary-fixed font-headline-sm text-headline-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-[4px_4px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform cursor-pointer" id="publish-btn" type="button">
+<span>PUBLISH P2P LISTING</span>
+<span class="material-symbols-outlined">bolt</span>
+</button>
+<button class="w-full h-12 bg-surface-container-lowest text-on-surface font-label-mono-md text-label-mono-md uppercase tracking-wider flex items-center justify-center gap-2 shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-transform cursor-pointer" type="button">
+<span class="material-symbols-outlined text-lg">save</span>
+<span>SAVE AS DRAFT</span>
+</button>
+</div>
+</div>
+<script>
+    (function() {
+      const qtyInput = document.getElementById('ec-input');
+      const priceInput = document.getElementById('price-input');
+      const dispQty = document.getElementById('disp-qty');
+      const dispPrice = document.getElementById('disp-price');
+      const dispGross = document.getElementById('disp-gross');
+      const dispFee = document.getElementById('disp-fee');
+      const dispNet = document.getElementById('disp-net');
+      const btnDec = document.getElementById('qty-dec');
+      const btnInc = document.getElementById('qty-inc');
+      const presetBtns = document.querySelectorAll('.preset-btn');
+      const publishBtn = document.getElementById('publish-btn');
+
+      function recalculate() {
+        let qty = parseFloat(qtyInput.value) || 0;
+        let price = parseFloat(priceInput.value) || 0;
+
+        if (qty > 7.6) qty = 7.6;
+        if (qty < 0) qty = 0;
+
+        const gross = qty * price;
+        const fee = gross * 0.05;
+        const net = gross - fee;
+
+        dispQty.textContent = qty.toFixed(1) + ' EC';
+        dispPrice.textContent = '₹' + price.toFixed(2) + ' / EC';
+        dispGross.textContent = '₹' + gross.toFixed(2);
+        dispFee.textContent = '-₹' + fee.toFixed(2);
+        dispNet.textContent = '₹' + net.toFixed(2);
+      }
+
+      btnDec.addEventListener('click', function() {
+        let current = parseFloat(qtyInput.value) || 0;
+        if (current > 0.5) {
+          qtyInput.value = (current - 0.5).toFixed(1);
+          recalculate();
+        }
+      });
+
+      btnInc.addEventListener('click', function() {
+        let current = parseFloat(qtyInput.value) || 0;
+        if (current < 7.6) {
+          qtyInput.value = Math.min(7.6, current + 0.5).toFixed(1);
+          recalculate();
+        }
+      });
+
+      presetBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          qtyInput.value = parseFloat(this.getAttribute('data-val')).toFixed(1);
+          recalculate();
+        });
+      });
+
+      qtyInput.addEventListener('input', recalculate);
+      priceInput.addEventListener('input', recalculate);
+
+      publishBtn.addEventListener('click', function() {
+        const originalText = publishBtn.innerHTML;
+        publishBtn.innerHTML = '<span>BROADCASTING TO GRID...</span><span class="material-symbols-outlined animate-spin">refresh</span>';
+        publishBtn.classList.add('bg-tertiary-fixed', 'text-on-tertiary-fixed');
+        setTimeout(() => {
+          publishBtn.innerHTML = '<span>LISTING BROADCAST ✓</span><span class="material-symbols-outlined">done_all</span>';
+          publishBtn.classList.remove('bg-tertiary-fixed', 'text-on-tertiary-fixed');
+          publishBtn.classList.add('bg-primary', 'text-on-primary');
+          setTimeout(() => {
+            publishBtn.innerHTML = originalText;
+            publishBtn.classList.remove('bg-primary', 'text-on-primary');
+          }, 2400);
+        }, 900);
+      });
+
+      recalculate();
+    })();
+  </script>
+</div></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary font-bold"><div class="flex items-center justify-around h-20 px-space-xs"><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="overview" href="#"><span class="material-symbols-outlined text-2xl">solar_power</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">HOME</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="marketplace" href="#"><span class="material-symbols-outlined text-2xl">candlestick_chart</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">MARKET</span></a><a aria-current="page" class="flex flex-col items-center justify-center w-14 h-14 transition-colors text-primary font-bold" data-path="sell-credits" href="#"><span class="material-symbols-outlined text-2xl">bolt</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">SELL</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="transactions" href="#"><span class="material-symbols-outlined text-2xl">receipt_long</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">TXNS</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="profile-node" href="#"><span class="material-symbols-outlined text-2xl">account_circle</span><span class="font-label-mono-sm text-label-mono-sm uppercase mt-0.5">PROFILE</span></a></div></nav></body></html>

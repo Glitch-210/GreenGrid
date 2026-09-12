@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  @apply bg-neutral-950 text-neutral-100;
+  @apply bg-surface text-on-surface font-body;
 }
