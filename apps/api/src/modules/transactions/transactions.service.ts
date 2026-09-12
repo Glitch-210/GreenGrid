@@ -264,6 +264,26 @@ export async function getTransaction(id: string) {
   return txn;
 }
 
-export async function listTransactions(userId: string) {
-  return prisma.transaction.findMany({ where: { OR: [{ buyerId: userId }, { sellerId: userId }] }, orderBy: { createdAt: "desc" } });
+export async function listTransactions(user: AuthUser) {
+  if (user.role === "REGULATOR" || user.role === "ADMIN" || user.role === "UTILITY") {
+    return prisma.transaction.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        buyer: { select: { name: true, displayAlias: true, email: true } },
+        seller: { select: { name: true, displayAlias: true, email: true } },
+        payment: true,
+        settlement: true,
+      },
+    });
+  }
+  return prisma.transaction.findMany({
+    where: { OR: [{ buyerId: user.id }, { sellerId: user.id }] },
+    orderBy: { createdAt: "desc" },
+    include: {
+      buyer: { select: { name: true, displayAlias: true, email: true } },
+      seller: { select: { name: true, displayAlias: true, email: true } },
+      payment: true,
+      settlement: true,
+    },
+  });
 }
