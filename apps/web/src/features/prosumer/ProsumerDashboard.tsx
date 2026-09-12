@@ -8,7 +8,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { formatEC, formatINR } from "../../lib/format";
 
 interface ProsumerDashboardData {
-  creditBalance: { available: string; reserved: string; sold: string; retired: string };
+  creditBalance: { available: string; listable: string; reserved: string; sold: string; retired: string };
   totalEarnings: string;
   creditCount: number;
 }
@@ -20,7 +20,13 @@ export default function ProsumerDashboard() {
   const available = Number(data?.creditBalance.available ?? 0);
   const reserved = Number(data?.creditBalance.reserved ?? 0);
   const sold = Number(data?.creditBalance.sold ?? 0);
-  const total = available + reserved + sold || 1;
+  const retired = Number(data?.creditBalance.retired ?? 0);
+  // The balance invariant is available + reserved + sold + retired == quantity.
+  // Dropping retired made every bar a percentage of the wrong denominator.
+  const total = available + reserved + sold + retired || 1;
+  // What the seller can actually list right now — the same number /prosumer/sell
+  // offers. `available` still counts expired, frozen and already-listed quantity.
+  const listable = Number(data?.creditBalance.listable ?? 0);
 
   return (
     <div>
@@ -37,24 +43,29 @@ export default function ProsumerDashboard() {
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricTile label="Avail to Sell" value={data ? formatEC(data.creditBalance.available) : "—"} delta="Ready for market" />
+        <MetricTile
+          label="Avail to Sell"
+          value={data ? formatEC(data.creditBalance.listable) : "—"}
+          delta={listable > 0 ? "Ready for market" : "Nothing listable"}
+        />
         <MetricTile label="In Escrow" value={data ? formatEC(data.creditBalance.reserved) : "—"} delta="Listed on market" />
         <MetricTile label="Total Sold" value={data ? formatEC(data.creditBalance.sold) : "—"} delta={`${data?.creditCount ?? 0} credit batches`} />
         <MetricTile label="Accrued Value" value={data ? formatINR(data.totalEarnings) : "—"} delta="Net DISCOM offset" />
       </div>
 
       {data && (
-        <div className="mt-4 grid gap-3 border-3 border-black bg-white p-4 shadow-hard sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 border-3 border-black bg-white p-4 shadow-hard sm:grid-cols-2 lg:grid-cols-4">
           <ProgressBar label="Available" percent={(available / total) * 100} color="solar" />
           <ProgressBar label="In Escrow" percent={(reserved / total) * 100} color="grid" />
           <ProgressBar label="Sold" percent={(sold / total) * 100} color="solar" />
+          <ProgressBar label="Retired" percent={(retired / total) * 100} color="grid" />
         </div>
       )}
 
       <div className="mt-6 flex flex-wrap gap-3">
         <Link to="/prosumer/sell">
           <Button variant="solar">
-            Sell surplus energy credits{data ? ` (${formatEC(data.creditBalance.available)})` : ""}
+            Sell surplus energy credits{data ? ` (${formatEC(data.creditBalance.listable)})` : ""}
           </Button>
         </Link>
         <Link to="/prosumer/listings">

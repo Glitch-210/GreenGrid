@@ -2,6 +2,7 @@ import { prisma } from "../../config/prisma";
 import { Decimal } from "../../lib/decimal";
 import { env } from "../../config/env";
 import { getSellerTotals } from "../transactions/seller-earnings.service";
+import { sellableTotal } from "../credits/credit-engine.service";
 import type { AuthUser } from "../../middleware/auth.middleware";
 
 export async function getDashboard(user: AuthUser) {
@@ -29,10 +30,17 @@ async function prosumerDashboard(userId: string) {
   // baskets, which silently dropped those sales from the seller's earnings.
   const sellerTotals = await getSellerTotals(userId);
 
+  // `available` is the raw portfolio balance: it still counts expired, frozen and
+  // already-listed quantity, so it is NOT what the seller can act on. `listable`
+  // runs the same predicate the Sell page's batch list does, so the headline
+  // figure and the Sell page can no longer disagree (Bug 16).
+  const listable = await sellableTotal(credits);
+
   return {
     role: "PROSUMER",
     creditBalance: {
       available: totals.available.toFixed(4),
+      listable: listable.toFixed(4),
       reserved: totals.reserved.toFixed(4),
       sold: totals.sold.toFixed(4),
       retired: totals.retired.toFixed(4),

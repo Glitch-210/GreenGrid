@@ -8,7 +8,7 @@ import { NotificationMenu } from "./NotificationMenu";
 import { useSocketInvalidate } from "../../hooks/useSocket";
 
 interface ProsumerDashboardData {
-  creditBalance: { available: string; reserved: string; sold: string; retired: string };
+  creditBalance: { available: string; listable: string; reserved: string; sold: string; retired: string };
   totalEarnings: string;
 }
 
@@ -93,8 +93,11 @@ export function AppShell() {
 
         <div className="flex items-center gap-3">
           {role === Role.PROSUMER && dashboard ? (
-            <div className="hidden border-3 border-black bg-white px-2 py-1 font-mono text-xs font-bold shadow-hard-sm sm:block">
-              {formatEC(dashboard.creditBalance.available)} · {formatINR(dashboard.totalEarnings)}
+            <div
+              className="hidden border-3 border-black bg-white px-2 py-1 font-mono text-xs font-bold shadow-hard-sm sm:block"
+              title="Listable credits · earnings to date"
+            >
+              {formatEC(dashboard.creditBalance.listable)} · {formatINR(dashboard.totalEarnings)}
             </div>
           ) : (
             <div className="hidden border-3 border-black bg-white px-2 py-1 font-mono text-xs font-bold uppercase shadow-hard-sm sm:block">

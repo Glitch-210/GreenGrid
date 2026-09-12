@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -28,7 +29,12 @@ export default function ProsumerSell() {
 
   const [creditId, setCreditId] = useState("");
   const [quantityKwh, setQuantityKwh] = useState("");
-  const [pricePerKwh, setPricePerKwh] = useState("4.25");
+  // No magic default: the price is seeded from the selected batch's zone basePrice
+  // below, so the form opens inside the band it advertises rather than at a
+  // hardcoded 4.25 that belongs to no zone.
+  const [pricePerKwh, setPricePerKwh] = useState("");
+  // Once the seller types a price, stop re-seeding it from under them.
+  const [priceTouched, setPriceTouched] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const publish = useApiMutation<{ creditId: string; quantityKwh: number; pricePerKwh: number }>(
@@ -46,6 +52,47 @@ export default function ProsumerSell() {
   // quantity already committed to open listings.
   const maxKwh = selectedCredit ? Number(selectedCredit.listableKwh) : 0;
 
+  const priceFloor = selectedZone ? Number(selectedZone.priceFloor) : null;
+  const priceCeiling = selectedZone ? Number(selectedZone.priceCeiling) : null;
+
+  // Seed (and re-seed, on a batch in a different zone) from the zone's basePrice
+  // until the seller edits the field themselves.
+  useEffect(() => {
+    if (priceTouched || !selectedZone) return;
+    setPricePerKwh(Number(selectedZone.basePrice).toFixed(2));
+  }, [selectedZone, priceTouched]);
+
+  /**
+   * Client-side band check. The server still rejects PRICE_OUT_OF_BAND — this is
+   * UX so the seller learns before a round-trip, not a substitute for that check.
+   * Bounds are inclusive, matching marketplace.service.ts.
+   */
+  const priceError = useMemo(() => {
+    if (!pricePerKwh.trim()) return null;
+    const price = Number(pricePerKwh);
+    if (!Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
+    if (priceFloor === null || priceCeiling === null) return null;
+    const where = zoneName ? ` in ${zoneName}` : "";
+    if (price < priceFloor) return `Below the floor of ₹${priceFloor.toFixed(2)}/kWh${where}.`;
+    if (price > priceCeiling) return `Above the ceiling of ₹${priceCeiling.toFixed(2)}/kWh${where}.`;
+    return null;
+  }, [pricePerKwh, priceFloor, priceCeiling, zoneName]);
+
+  /**
+   * Client-side quantity check, against the listable remainder rather than raw
+   * availableKwh — the browser treats `max` on a number input as a stepper hint
+   * only, so typing past it was unimpeded. The server still rejects
+   * INSUFFICIENT_CREDITS; this is UX.
+   */
+  const quantityError = useMemo(() => {
+    if (!quantityKwh.trim()) return null;
+    const qty = Number(quantityKwh);
+    if (!Number.isFinite(qty) || qty <= 0) return "Enter a quantity greater than zero.";
+    if (!selectedCredit) return null;
+    if (qty > maxKwh) return `Only ${maxKwh.toFixed(2)} kWh is listable on this batch.`;
+    return null;
+  }, [quantityKwh, maxKwh, selectedCredit]);
+
   const { gross, fee, net } = useMemo(() => {
     const qty = Number(quantityKwh) || 0;
     const price = Number(pricePerKwh) || 0;
@@ -54,7 +101,16 @@ export default function ProsumerSell() {
     return { gross: g, fee: f, net: g - f };
   }, [quantityKwh, pricePerKwh, feeRate]);
 
-  async function submit() {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    // Without this the form navigates away on Enter / submit-button click.
+    e.preventDefault();
+    // The button is disabled on a violation; this guards the other paths into
+    // submit (Enter, programmatic) so the checks cannot be stepped around.
+    const blocked = priceError ?? quantityError;
+    if (blocked) {
+      setMessage(blocked);
+      return;
+    }
     setMessage(null);
     try {
       await publish.mutateAsync({
@@ -77,7 +133,7 @@ export default function ProsumerSell() {
       </p>
 
       <Card className="max-w-xl">
-        <div className="flex flex-col gap-4">
+        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
           <div>
             <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
               Credit batch
@@ -88,6 +144,7 @@ export default function ProsumerSell() {
               onChange={(e) => {
                 setCreditId(e.target.value);
                 setQuantityKwh("");
+                setPriceTouched(false);
               }}
             >
               <option value="">Select a verified credit batch</option>
@@ -119,7 +176,9 @@ export default function ProsumerSell() {
                 −
               </button>
               <input
-                className="w-full border-3 border-black bg-white px-3 py-2 text-center font-mono text-sm"
+                className={`w-full border-3 bg-white px-3 py-2 text-center font-mono text-sm ${
+                  quantityError ? "border-fault" : "border-black"
+                }`}
                 type="number"
                 min={0}
                 max={maxKwh || undefined}
@@ -127,6 +186,8 @@ export default function ProsumerSell() {
                 value={quantityKwh}
                 onChange={(e) => setQuantityKwh(e.target.value)}
                 placeholder="0.0"
+                aria-invalid={!!quantityError}
+                aria-describedby="quantity-help"
               />
               <button
                 type="button"
@@ -136,11 +197,18 @@ export default function ProsumerSell() {
                 +
               </button>
             </div>
-            {selectedCredit && (
-              <p className="mt-1 font-mono text-[10px] uppercase text-on-surface-variant">
-                Max available to list: {maxKwh.toFixed(2)} kWh
-              </p>
-            )}
+            <p
+              id="quantity-help"
+              className={`mt-1 font-mono text-[10px] uppercase ${
+                quantityError ? "font-bold text-fault" : "text-on-surface-variant"
+              }`}
+            >
+              {quantityError
+                ? quantityError
+                : selectedCredit
+                  ? `Max available to list: ${maxKwh.toFixed(2)} kWh`
+                  : "Select a credit batch to see its listable ceiling"}
+            </p>
           </div>
 
           <div>
@@ -148,18 +216,33 @@ export default function ProsumerSell() {
               Price per credit (₹/EC)
             </label>
             <input
-              className="w-full border-3 border-black bg-white px-3 py-2 font-mono text-sm"
+              className={`w-full border-3 bg-white px-3 py-2 font-mono text-sm ${
+                priceError ? "border-fault" : "border-black"
+              }`}
               type="number"
-              min={0}
+              min={priceFloor ?? 0}
+              max={priceCeiling ?? undefined}
               step={0.05}
               value={pricePerKwh}
-              onChange={(e) => setPricePerKwh(e.target.value)}
+              onChange={(e) => {
+                setPriceTouched(true);
+                setPricePerKwh(e.target.value);
+              }}
+              aria-invalid={!!priceError}
+              aria-describedby="price-band-help"
             />
-            {selectedZone && (
-              <p className="mt-1 font-mono text-[10px] uppercase text-on-surface-variant">
-                Allowed range: ₹{selectedZone.priceFloor}–₹{selectedZone.priceCeiling}/kWh in {zoneName}
-              </p>
-            )}
+            <p
+              id="price-band-help"
+              className={`mt-1 font-mono text-[10px] uppercase ${
+                priceError ? "font-bold text-fault" : "text-on-surface-variant"
+              }`}
+            >
+              {priceError
+                ? priceError
+                : selectedZone
+                  ? `Allowed range: ₹${priceFloor?.toFixed(2)}–₹${priceCeiling?.toFixed(2)}/kWh in ${zoneName}`
+                  : "Select a credit batch to see its zone price band"}
+            </p>
           </div>
 
           <div className="border-3 border-black bg-surface-container-low p-3">
@@ -182,12 +265,14 @@ export default function ProsumerSell() {
 
           <Button
             variant="solar"
-            disabled={publish.isPending || !creditId || !quantityKwh || !pricePerKwh}
-            onClick={submit}
+            type="submit"
+            disabled={
+              publish.isPending || !creditId || !quantityKwh || !pricePerKwh || !!priceError || !!quantityError
+            }
           >
             Publish P2P listing
           </Button>
-        </div>
+        </form>
       </Card>
     </div>
   );

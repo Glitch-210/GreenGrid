@@ -111,25 +111,43 @@ function assertInvariant(c: { quantityKwh: Decimal; availableKwh: Decimal; reser
 /** Statuses in which a credit can never be sold, whatever its balance says. */
 const UNSELLABLE_STATUSES: CreditStatus[] = ["FROZEN", "EXPIRED", "RETIRED", "SETTLED"];
 
-export async function listCreditsForOwner(ownerId: string, status?: CreditStatus, sellable?: boolean) {
-  const credits = await prisma.energyCredit.findMany({
-    where: { ownerId, ...(status ? { status } : {}) },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!sellable) return credits;
+/** The fields the sellable predicate reads — any credit row satisfies this. */
+interface SellableInput {
+  id: string;
+  availableKwh: Decimal;
+  expiresAt: Date;
+  status: CreditStatus;
+}
 
-  // A credit's availableKwh does NOT drop when it is listed (only a buyer's
-  // reservation moves balance — §5.6), so "how much can I still list?" is
-  // availableKwh minus what open listings already spoke for. Anything with a
-  // positive remainder is sellable regardless of status.
+/**
+ * How much of each credit open listings have already spoken for. Exported so
+ * every caller of `selectSellable` feeds it the same numbers.
+ */
+export async function listedRemainderByCredit(creditIds: string[]): Promise<Map<string, Decimal>> {
+  if (creditIds.length === 0) return new Map();
   const listed = await prisma.marketplaceListing.groupBy({
     by: ["creditId"],
-    where: { creditId: { in: credits.map((c) => c.id) }, status: { in: ["ACTIVE", "PARTIAL"] } },
+    where: { creditId: { in: creditIds }, status: { in: ["ACTIVE", "PARTIAL"] } },
     _sum: { remainingKwh: true },
   });
-  const listedByCredit = new Map(listed.map((l) => [l.creditId, l._sum.remainingKwh ?? new Decimal(0)]));
-  const now = new Date();
+  return new Map(listed.map((l) => [l.creditId, l._sum.remainingKwh ?? new Decimal(0)]));
+}
 
+/**
+ * The one definition of "sellable", shared by the Sell page's batch list and the
+ * dashboard's headline figure — two screens quoting two different predicates is
+ * how they came to contradict each other.
+ *
+ * A credit's availableKwh does NOT drop when it is listed (only a buyer's
+ * reservation moves balance — §5.6), so "how much can I still list?" is
+ * availableKwh minus what open listings already spoke for. Anything with a
+ * positive remainder is sellable regardless of status.
+ */
+export function selectSellable<T extends SellableInput>(
+  credits: T[],
+  listedByCredit: Map<string, Decimal>,
+  now = new Date(),
+): Array<T & { listableKwh: Decimal }> {
   return credits
     .filter((c) => c.expiresAt > now && !UNSELLABLE_STATUSES.includes(c.status))
     .map((c) => ({
@@ -139,6 +157,22 @@ export async function listCreditsForOwner(ownerId: string, status?: CreditStatus
       listableKwh: new Decimal(c.availableKwh).minus(listedByCredit.get(c.id) ?? new Decimal(0)),
     }))
     .filter((c) => c.listableKwh.gt(0));
+}
+
+/** Total kWh the owner could list right now, over the credits given. */
+export async function sellableTotal(credits: SellableInput[]): Promise<Decimal> {
+  const listedByCredit = await listedRemainderByCredit(credits.map((c) => c.id));
+  return selectSellable(credits, listedByCredit).reduce((sum, c) => sum.plus(c.listableKwh), new Decimal(0));
+}
+
+export async function listCreditsForOwner(ownerId: string, status?: CreditStatus, sellable?: boolean) {
+  const credits = await prisma.energyCredit.findMany({
+    where: { ownerId, ...(status ? { status } : {}) },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!sellable) return credits;
+
+  return selectSellable(credits, await listedRemainderByCredit(credits.map((c) => c.id)));
 }
 
 export async function getCreditById(user: AuthUser, id: string) {

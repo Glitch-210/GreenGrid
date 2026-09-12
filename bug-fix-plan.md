@@ -88,6 +88,27 @@ real menu button (`aria-expanded`, Escape-to-close, focus return) that marks ite
 through the previously-unused `PATCH /notifications/:id/read`. `useSocketInvalidate` was
 fixed first: it depended on an inline array literal, so it re-subscribed on every render.
 
+**Bug 14** made `useAuth` a real `AuthProvider` context wrapping `BrowserRouter` in
+`main.tsx`, so every caller shares one state instead of an independent copy; `useAuth()`
+now throws outside the provider rather than silently forking. The stored-user
+`JSON.parse` is guarded and clears the bad key instead of throwing during render.
+
+**Bug 16** extracted the Bug 1 sellability predicate into `selectSellable` /
+`sellableTotal` and pointed the dashboard at it, so the "Avail to Sell" tile, the header
+pill and the Sell button quote the same number the Sell page will accept — prosumer1 went
+from an advertised 192.89 EC against 62.89 actually listable to 62.89 on both screens.
+
+**Bug 19** bound the Sell page's price input to the selected batch's zone band —
+seeded from `basePrice` instead of a hardcoded 4.25, validated inclusively on change,
+submit disabled with the violation shown inline at the field. The server's
+`PRICE_OUT_OF_BAND` check is unchanged and still the boundary.
+
+**Bugs 20 and 21** finished the Sell form. Quantity is now validated against the listable
+remainder with the limit shown inline (1064 boundary cases checked against the server's
+own predicate, 0 mismatches), and the controls sit in a real `<form onSubmit>` so Enter
+publishes. `Button` defaults to `type="button"` so a button dropped into a form can no
+longer submit it by accident.
+
 **Bugs 3, 25 and 26** were fixed together: seller earnings now come from `EnergyMatch`
 via a shared `getSellerTotals`, used by both `/users/dashboard` and `/analytics/me`,
 against one `SELLER_EARNED_STATUSES` list thresholded at `PAID`.
@@ -801,6 +822,10 @@ state and asserts earnings are monotonic.
 
 ## Bug 14 — `useAuth` is per-component state
 
+**Status: FIXED.** `hooks/useAuth.tsx` is now an `AuthProvider` context wrapping
+`BrowserRouter` in `main.tsx`; all callers share one state, and the stored-user
+`JSON.parse` is guarded.
+
 **Status: CONFIRMED (inspection).**
 
 `hooks/useAuth.ts:8` is a plain hook holding its own `useState`, seeded from
@@ -838,6 +863,10 @@ call it from `logout()`. Reconnect with the fresh token on next `getSocket()`.
 
 ## Bug 16 — "Avail to Sell" contradicts the Sell page
 
+**Status: FIXED.** The dashboard now quotes `creditBalance.listable`, computed by the
+same `selectSellable` predicate the Sell page's batch list uses, and the progress-bar
+denominator includes `retired`. See "Fix — APPLIED" below.
+
 **Status: CONFIRMED.** The dashboard tile read **"AVAIL TO SELL — 179.05 EC — Ready for
 market"**, the header pill read **"179.05 EC · Rs 576.00"**, and the Sell button was
 labelled **"Sell surplus energy credits (179.05 EC)"** — while `/prosumer/sell` offered
@@ -855,6 +884,46 @@ seller is shown is the number they can act on.
 Also note `ProsumerDashboard.tsx:23` computes `total = available + reserved + sold`,
 omitting `retired` even though the API returns it — so the three progress bars (`:48-50`)
 are percentages of the wrong denominator once anything is retired.
+
+### Fix — APPLIED
+
+The Bug 1 predicate was inlined in `listCreditsForOwner`, so the dashboard could not have
+reused it without copying it — and a copied predicate is how the two screens drift apart
+again. It is now extracted into `credit-engine.service.ts` as three exports:
+
+- `listedRemainderByCredit(creditIds)` — open (`ACTIVE`/`PARTIAL`) listing quantity per credit,
+- `selectSellable(credits, listedByCredit)` — the single definition of sellable, returning
+  each credit with its `listableKwh`,
+- `sellableTotal(credits)` — the sum, for callers that want one number.
+
+`listCreditsForOwner` (the Sell page) and `prosumerDashboard` (the tile, the header pill
+and the Sell button label) now both run that one predicate. The dashboard returns
+`creditBalance.listable` **alongside** `available` rather than replacing it: `available` is
+still the honest portfolio balance the progress bars need to satisfy the
+`available + reserved + sold + retired == quantity` invariant, and only the *sellable*
+question has a different answer. The "Avail to Sell" tile, the `AppShell` header pill and
+the Sell button all read `listable`; the tile's sub-label reads "Nothing listable" at zero
+instead of "Ready for market".
+
+The progress-bar denominator now includes `retired`, and a fourth "Retired" bar was added
+so the bars account for the whole batch rather than silently dropping a slice.
+
+Verified live against the seeded database — dashboard figure vs. Sell page batch list,
+per prosumer:
+
+| seller | raw `available` (was shown) | `listable` (now shown) | Sell page |
+|---|---|---|---|
+| prosumer1 | 192.89 | **62.89** | 62.89 (37 batches) |
+| prosumer2 | 525.24 | **125.24** | 125.24 (65 batches) |
+| prosumer3 | 143.60 | **53.60** | 53.60 (30 batches) |
+| prosumer4 | 0.00 | **0.00** | 0.00 (0 batches) |
+
+The overstatement was 130 EC for prosumer1 and 400 EC for prosumer2. Both screens now
+agree exactly. Test suite still 27/27; `tsc --noEmit` clean on both apps.
+
+**Left open deliberately:** the "In Escrow" tile is labelled "Listed on market" but shows
+`reservedKwh`, which is quantity a *buyer* has reserved, not quantity listed. That is a
+separate mislabelling, not part of this contradiction.
 
 ---
 
@@ -912,6 +981,10 @@ listing cancellation (Bug 5) and the marketplace buy, invalidating
 
 ## Bug 19 — Price band shown but not enforced
 
+**Status: FIXED.** The price input is now bound to the selected batch's zone band,
+seeded from `basePrice`, and submit is blocked with an inline violation. See
+"Fix — APPLIED" below.
+
 **Status: CONFIRMED.** The page displayed **"Allowed range: Rs 2.5–Rs 7/kWh in Ahmedabad
 West"** while the price input defaulted to a hardcoded **4.25**, unrelated to the zone's
 `basePrice` of 4.00. No client-side validation binds the input to the band.
@@ -929,9 +1002,54 @@ submit and show the violation inline. Default the price input to the zone's `bas
 once a batch is selected. Keep the server check — client validation is UX, the server is
 the boundary.
 
+### Fix — APPLIED
+
+`ProsumerSell.tsx` only. The server check in `marketplace.service.ts:37-39` is untouched
+and remains the boundary; this is purely the seller finding out before the round-trip.
+
+- **The magic `4.25` is gone.** The price seeds from the selected batch's zone
+  `basePrice`, via an effect keyed on `selectedZone`, so the form opens inside the band it
+  advertises. A `priceTouched` flag stops the seed from overwriting what the seller types;
+  picking a different batch clears it, so a batch in another zone re-seeds correctly.
+- **`priceError`** is a `useMemo` over the typed value: non-numeric or `<= 0`, below
+  floor, or above ceiling, phrased with the zone name ("Below the floor of ₹2.50/kWh in
+  Ahmedabad West."). Bounds are **inclusive**, matching the server's `lt`/`gt`.
+- **The band line is now the error slot.** It reads the allowed range normally and the
+  violation in `text-fault` when there is one, so the message sits at the field rather
+  than in the shared grey status line at the bottom (which is Bug 22). The input border
+  turns `border-fault`, and it carries `aria-invalid` plus `aria-describedby` pointing at
+  that line, so the violation reaches a screen reader too.
+- **Submit is disabled** while a violation stands, and `submit()` early-returns on one as
+  well — the button is not the only way into it (Bug 21 is about to add Enter).
+- `min`/`max` on the input now carry the real band instead of `min={0}`, so the stepper
+  arrows stay inside it.
+
+Verified against both seeded zones by running the client predicate and the server's
+`Decimal` predicate over 11 prices each — floor, ceiling, `basePrice`, each bound ±0.01,
+zero, negative, and far out of band:
+
+| zone | band | basePrice | result |
+|---|---|---|---|
+| GZ-AHM-W Ahmedabad West | ₹2.50–₹7.00 | ₹4.00 | agrees on all 11 |
+| GZ-AHM-E Ahmedabad East | ₹2.50–₹7.00 | ₹4.10 | agrees on all 11 |
+
+Both seeded `basePrice` values sit inside their band, so the new default never opens the
+form already in violation. `tsc --noEmit` and the web build are clean. No API change, so
+the API suite is unaffected.
+
+**Note.** The client resolves the band from `credit.gridZoneId` while the server resolves
+it from `credit.meter.gridZone`. These are written from the same zone at mint
+(`credit-engine.service.ts:63`) and can only diverge if a meter is later reassigned to
+another zone — at which point the client would validate against the stale band and the
+server would still reject. Out of scope here; noted in case meter reassignment is ever
+added.
+
 ---
 
 ## Bug 20 — Quantity `max` is not enforced
+
+**Status: FIXED.** The quantity is validated against the listable remainder, submit is
+blocked, and the limit is shown inline at the field. See "Fix — APPLIED" below.
 
 **Status: CONFIRMED.** With `max="170.1266"` on the input, typing **100** left the Publish
 button **enabled**; clicking it produced a server `INSUFFICIENT_CREDITS` rejection (the
@@ -947,9 +1065,34 @@ input paths disagree.
 **Fix.** Validate `0 < qty <= listableMax` (the Bug 6 remainder, not raw `availableKwh`),
 disable submit, and show the limit inline.
 
+### Fix — APPLIED
+
+`quantityError` mirrors the Bug 19 `priceError`: non-numeric or `<= 0`, or above
+`maxKwh` — which is `listableKwh`, the Bug 1/6 remainder, not raw `availableKwh`. The
+"Max available to list" line is now the error slot (`text-fault` when violated), the input
+gains `border-fault` plus `aria-invalid` / `aria-describedby`, submit is disabled while a
+violation stands, and `onSubmit` early-returns on one. The two input paths no longer
+disagree: typing is now held to the same ceiling the `+` stepper already clamped to.
+
+Verified that the client predicate and the server's `INSUFFICIENT_CREDITS` predicate
+(`qty + listedSoFar > availableKwh`) agree, over every sellable batch in the seeded
+database — 133 batches across four prosumers, 8 quantities each (the exact ceiling, ±0.01
+either side, half, zero, negative, 100, and 0.001):
+
+**1064 cases, 0 mismatches.**
+
+The two are algebraically the same test, since `listableKwh = availableKwh - listedSoFar`;
+the run confirms no rounding gap opens between `Number` on the client and `Decimal` on the
+server at the boundary.
+
+---
+
 ---
 
 ## Bug 21 — The sell form is not a form
+
+**Status: FIXED.** The controls are wrapped in `<form onSubmit>`, and `Button` now
+defaults to `type="button"`. See "Fix — APPLIED" below.
 
 **Status: CONFIRMED.** `document.querySelector('select').closest('form')` returned
 **null** — the controls are not inside a `<form>`. Pressing Enter in either numeric input
@@ -965,6 +1108,30 @@ does nothing.
 `+`/`-` steppers already set `type="button"` (`:95`, `:112`), and the primary button needs
 `type="submit"`. Give `Button` a default `type="button"` so this class of bug cannot recur
 elsewhere.
+
+### Fix — APPLIED
+
+The `<Card>`'s inner `div` became `<form onSubmit={onSubmit} noValidate>` — `Card` is a
+plain `div` (`ui/Card.tsx:5`), so the form nests cleanly. `submit()` became
+`onSubmit(e: FormEvent)` with `preventDefault()`, so Enter in either numeric input
+publishes instead of doing nothing, and the page does not navigate away. `noValidate` is
+deliberate: the inputs carry real `min`/`max` after Bugs 19 and 20, and without it the
+browser's own constraint bubble would preempt the inline messages those bugs added.
+
+`Button` now defaults to `type="button"`, applied before the prop spread so callers can
+still override. Both existing forms (`LoginPage.tsx:48`, `RegisterPage.tsx:64`) already
+pass `type="submit"` explicitly, so nothing regressed; the Sell page's publish button
+gained `type="submit"` and dropped its `onClick`.
+
+Verified in Chrome against the running app: on `/login`, the sole `Button` still reports
+`type: "submit"` and `closest('form')` non-null, confirming the new default does not
+shadow an explicit `type`. The `+`/`-` steppers keep their own `type="button"`.
+
+**Not verified live on `/prosumer/sell`:** that route is behind `RequireAuth`, and
+reaching it means entering the seeded password into the login form, which I do not do.
+To check it yourself, sign in as `prosumer1@demo.in` and run
+`document.querySelector("select").closest("form")` — it should now return the `<form>`
+rather than `null`.
 
 ---
 
