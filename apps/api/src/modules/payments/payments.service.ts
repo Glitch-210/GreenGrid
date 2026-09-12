@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { env } from "../../config/env";
 import { Decimal } from "../../lib/decimal";
 import { ApiError } from "../../lib/ApiError";
 import { audit } from "../../lib/audit";
@@ -7,6 +8,7 @@ import { enqueueChainOp } from "../../adapters/chain/queue";
 import { pseudoAddress, type CreditOrigin } from "../../adapters/chain/chain.service";
 import { logger } from "../../lib/logger";
 import { emitToUser } from "../../sockets/io";
+import { notifyEach } from "../../lib/notify";
 import { SOCKET_EVENTS } from "../../sockets/events";
 import { isUniqueConstraintOn } from "../../lib/prisma-errors";
 import type { CreatePaymentInput } from "@wattshare/shared";
@@ -78,7 +80,8 @@ export async function createPayment(input: CreatePaymentInput, idempotencyKey: s
       if (!listing) continue;
       const credit = await tx.energyCredit.update({
         where: { id: listing.creditId },
-        data: { reservedKwh: { decrement: match.quantityKwh.toNumber() }, soldKwh: { increment: match.quantityKwh.toNumber() } },
+        // Decimal, not float — this moves the seller's balance from reserved to sold.
+        data: { reservedKwh: { decrement: match.quantityKwh }, soldKwh: { increment: match.quantityKwh } },
       });
       transferred.push({
         creditId: credit.creditId,
@@ -102,6 +105,24 @@ export async function createPayment(input: CreatePaymentInput, idempotencyKey: s
   await transferOnChain(txn, transferred);
 
   emitToUser(txn.buyerId, SOCKET_EVENTS.PAYMENT_UPDATED, { transactionId: txn.transactionId, status: "PAID" });
+
+  // This is the moment the seller's money is real — previously they were told nothing.
+  const paidBySeller = new Map<string, Decimal>();
+  for (const m of txn.matches) {
+    paidBySeller.set(m.sellerId, (paidBySeller.get(m.sellerId) ?? new Decimal(0)).plus(new Decimal(m.quantityKwh).times(m.pricePerKwh)));
+  }
+  const feeMultiplier = new Decimal(1).minus(env.platformFeeRate);
+  for (const sellerId of paidBySeller.keys()) {
+    emitToUser(sellerId, SOCKET_EVENTS.PAYMENT_UPDATED, { transactionId: txn.transactionId, status: "PAID" });
+  }
+  await notifyEach(
+    [...paidBySeller.keys()],
+    "PAYMENT_RECEIVED",
+    "You've been paid",
+    (id) => `Payment received for your credits — ₹${paidBySeller.get(id)!.times(feeMultiplier).toFixed(2)} net of fees.`,
+    { transactionId: txn.transactionId },
+  );
+
   return payment;
 }
 

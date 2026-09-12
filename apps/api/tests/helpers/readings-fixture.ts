@@ -57,9 +57,32 @@ export async function seedFixture(): Promise<Fixture> {
   return { zoneId: zone.id, ownerId: owner.id, meterId: meter.id };
 }
 
-/** Clears out any readings the previous case created, keeping the meter itself. */
+/**
+ * Clears out any readings the previous case created, keeping the meter itself.
+ *
+ * EnergyCredit.readingId is FK RESTRICT, so credits minted from these readings must
+ * go first. That happens whenever the meter simulator is running against the same
+ * database (the dev server's scheduler will happily tick this fixture's meter), so
+ * the delete order matters even though the tests themselves never mint.
+ */
 export async function resetFixture(fx: Fixture) {
-  await prisma.meterReading.deleteMany({ where: { meterId: fx.meterId } });
+  await deleteReadingsForMeters([fx.meterId]);
+}
+
+/** Deletes readings for the given meters, clearing dependent credits first. */
+async function deleteReadingsForMeters(meterIds: string[]) {
+  if (meterIds.length === 0) return;
+  const readings = await prisma.meterReading.findMany({ where: { meterId: { in: meterIds } }, select: { id: true } });
+  const readingIds = readings.map((r) => r.id);
+  if (readingIds.length > 0) {
+    const credits = await prisma.energyCredit.findMany({ where: { readingId: { in: readingIds } }, select: { id: true } });
+    const creditIds = credits.map((c) => c.id);
+    if (creditIds.length > 0) {
+      await prisma.marketplaceListing.deleteMany({ where: { creditId: { in: creditIds } } });
+      await prisma.energyCredit.deleteMany({ where: { id: { in: creditIds } } });
+    }
+  }
+  await prisma.meterReading.deleteMany({ where: { meterId: { in: meterIds } } });
 }
 
 /**
@@ -68,12 +91,12 @@ export async function resetFixture(fx: Fixture) {
  * previous run is swept up too.
  */
 export async function cleanup() {
-  await prisma.meterReading.deleteMany({ where: { externalId: { startsWith: PREFIX } }, });
   const users = await prisma.user.findMany({ where: { email: { startsWith: `${PREFIX}meter-` } }, select: { id: true } });
   const userIds = users.map((u) => u.id);
 
   if (userIds.length > 0) {
-    await prisma.meterReading.deleteMany({ where: { meter: { userId: { in: userIds } } } });
+    const meters = await prisma.meter.findMany({ where: { userId: { in: userIds } }, select: { id: true } });
+    await deleteReadingsForMeters(meters.map((m) => m.id));
     await prisma.meter.deleteMany({ where: { meterNumber: { startsWith: METER_NUMBER } } });
     await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });

@@ -6,6 +6,7 @@ import { utilityAdapter } from "../../adapters/utility";
 import { enqueueChainOp } from "../../adapters/chain/queue";
 import { pseudoAddress } from "../../adapters/chain/chain.service";
 import { emitToUser } from "../../sockets/io";
+import { notifyEach } from "../../lib/notify";
 import { SOCKET_EVENTS } from "../../sockets/events";
 
 /**
@@ -78,12 +79,27 @@ async function pollSubmitted() {
       });
     }
 
-    emitToUser(settlement.consumerId, SOCKET_EVENTS.SETTLEMENT_UPDATED, {
+    const payload = {
       transactionId: settlement.transaction.transactionId,
       status,
       settledKwh: settledKwh.toFixed(4),
       billAdjustment: billAdjustment.toFixed(4),
-    });
+    };
+    emitToUser(settlement.consumerId, SOCKET_EVENTS.SETTLEMENT_UPDATED, payload);
+
+    // Settlement retires the sellers' credits, so it closes out their side of the
+    // trade too — they should see it land, not just the consumer.
+    const sellerIds = [...new Set(settlement.transaction.matches.map((m) => m.sellerId))];
+    for (const sellerId of sellerIds) {
+      emitToUser(sellerId, SOCKET_EVENTS.SETTLEMENT_UPDATED, payload);
+    }
+    await notifyEach(
+      sellerIds,
+      "SETTLEMENT_COMPLETE",
+      status === "SETTLED" ? "Trade settled with the DISCOM" : `Settlement ${status.toLowerCase()}`,
+      () => `${settledKwh.toFixed(2)} EC settled against the grid for ${settlement.transaction.transactionId}.`,
+      { transactionId: settlement.transaction.transactionId },
+    );
   }
 }
 
@@ -104,8 +120,10 @@ async function retireSettledCredits(
     const credit = await prisma.energyCredit.update({
       where: { id: listing.creditId },
       data: {
-        soldKwh: { decrement: retireQty.toNumber() },
-        retiredKwh: { increment: retireQty.toNumber() },
+        // Decimal throughout: retireQty is a fraction of the match quantity, so this
+        // is exactly where float rounding would leave a credit that never fully retires.
+        soldKwh: { decrement: retireQty },
+        retiredKwh: { increment: retireQty },
       },
     });
 

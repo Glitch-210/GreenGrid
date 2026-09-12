@@ -1,5 +1,7 @@
 import { prisma } from "../../config/prisma";
 import { Decimal } from "../../lib/decimal";
+import { env } from "../../config/env";
+import { getSellerTotals } from "../transactions/seller-earnings.service";
 import type { AuthUser } from "../../middleware/auth.middleware";
 
 export async function getDashboard(user: AuthUser) {
@@ -22,10 +24,9 @@ async function prosumerDashboard(userId: string) {
     { available: new Decimal(0), reserved: new Decimal(0), sold: new Decimal(0), retired: new Decimal(0) },
   );
 
-  const earnings = await prisma.transaction.aggregate({
-    where: { sellerId: userId, status: { in: ["COMPLETED", "SETTLED", "CREDIT_TRANSFERRED"] } },
-    _sum: { sellerPayout: true },
-  });
+  // Via EnergyMatch, not Transaction.sellerId — the latter is null for multi-seller
+  // baskets, which silently dropped those sales from the seller's earnings.
+  const sellerTotals = await getSellerTotals(userId);
 
   return {
     role: "PROSUMER",
@@ -35,8 +36,11 @@ async function prosumerDashboard(userId: string) {
       sold: totals.sold.toFixed(4),
       retired: totals.retired.toFixed(4),
     },
-    totalEarnings: (earnings._sum.sellerPayout ?? new Decimal(0)).toFixed(4),
+    totalEarnings: sellerTotals.earnings.toFixed(4),
     creditCount: credits.length,
+    // Sent so the Sell page can quote the fee and net payout from the same rate
+    // the settlement engine will actually apply.
+    platformFeeRate: env.platformFeeRate.toString(),
   };
 }
 

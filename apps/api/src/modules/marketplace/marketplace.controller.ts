@@ -22,7 +22,7 @@ export async function cancelListingHandler(req: Request, res: Response, next: Ne
 
 export async function listListingsHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const listings = await marketplaceService.listListings(req.query as any);
+    const listings = await marketplaceService.listListings(req.user!, req.query as any);
     ok(res, listings);
   } catch (err) {
     next(err);

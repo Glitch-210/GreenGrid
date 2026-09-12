@@ -174,7 +174,17 @@ export async function cleanup() {
   await prisma.transaction.deleteMany({ where: { id: { in: txnIds } } });
   await prisma.marketplaceListing.deleteMany({ where: { sellerId: { in: userIds } } });
   await prisma.energyCredit.deleteMany({ where: { ownerId: { in: userIds } } });
-  await prisma.meterReading.deleteMany({ where: { externalId: { startsWith: PREFIX } } });
+  // Delete readings by meter, not by our externalId prefix: if a meter simulator is
+  // running against this database it writes SIM-prefixed readings onto the fixture's
+  // meter, and those survive a prefix match and then block the meter delete
+  // (MeterReading_meterId_fkey is RESTRICT).
+  const fixtureMeters = await prisma.meter.findMany({ where: { meterNumber: { startsWith: PREFIX } }, select: { id: true } });
+  const fixtureMeterIds = fixtureMeters.map((m) => m.id);
+  if (fixtureMeterIds.length > 0) {
+    const strayReadings = await prisma.meterReading.findMany({ where: { meterId: { in: fixtureMeterIds } }, select: { id: true } });
+    await prisma.energyCredit.deleteMany({ where: { readingId: { in: strayReadings.map((r) => r.id) } } });
+    await prisma.meterReading.deleteMany({ where: { meterId: { in: fixtureMeterIds } } });
+  }
   await prisma.meter.deleteMany({ where: { meterNumber: { startsWith: PREFIX } } });
   await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
@@ -315,7 +325,13 @@ export async function cleanupManyListingsFixture() {
     await prisma.transaction.deleteMany({ where: { id: { in: txnIds } } });
     await prisma.marketplaceListing.deleteMany({ where: { sellerId: { in: userIds } } });
     await prisma.energyCredit.deleteMany({ where: { ownerId: { in: userIds } } });
-    await prisma.meterReading.deleteMany({ where: { externalId: { startsWith: `${PREFIX}MANY-` } } });
+    const manyMeters = await prisma.meter.findMany({ where: { meterNumber: { endsWith: "-MANY" } }, select: { id: true } });
+    const manyMeterIds = manyMeters.map((m) => m.id);
+    if (manyMeterIds.length > 0) {
+      const strayReadings = await prisma.meterReading.findMany({ where: { meterId: { in: manyMeterIds } }, select: { id: true } });
+      await prisma.energyCredit.deleteMany({ where: { readingId: { in: strayReadings.map((r) => r.id) } } });
+      await prisma.meterReading.deleteMany({ where: { meterId: { in: manyMeterIds } } });
+    }
     await prisma.meter.deleteMany({ where: { meterNumber: { endsWith: "-MANY" } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   }

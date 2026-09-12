@@ -42,3 +42,29 @@ export const PRICING = {
 
 // Chain queue — §8
 export const CHAIN_RETRY_DELAYS_MS = [2000, 8000, 30000];
+
+/**
+ * Transaction statuses in which a seller has actually earned their payout.
+ *
+ * The threshold is PAID: per the state machine, once a transaction is PAID it can
+ * never reach CANCELLED or EXPIRED, so counting from here keeps a seller's reported
+ * earnings monotonic — they never see the figure drop as a trade advances.
+ *
+ * Every status at or past PAID must be listed. Omitting one makes earnings dip and
+ * recover while a transaction passes through it (SETTLEMENT_PENDING was missing,
+ * which is exactly what happened). Anything before PAID must NOT be listed, or
+ * cancelled and failed trades get counted as income.
+ */
+export const SELLER_EARNED_STATUSES = [
+  "PAID",
+  "BLOCKCHAIN_PENDING",
+  // The chain is an audit trail, not the critical path (README), so a failed anchor
+  // does not un-earn a payment the buyer already made. It is terminal, so excluding
+  // it would strand the seller's money at zero forever.
+  "BLOCKCHAIN_FAILED",
+  "CREDIT_TRANSFERRED",
+  "SETTLEMENT_PENDING",
+  "SETTLEMENT_FAILED",
+  "SETTLED",
+  "COMPLETED",
+] as const;

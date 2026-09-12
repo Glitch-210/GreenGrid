@@ -5,6 +5,7 @@ import { runSimulatorTick } from "../modules/meters/simulator";
 import { runPricingTick } from "../modules/pricing/pricing-engine.service";
 import { pollSettlements } from "../modules/settlement/settlement.service";
 import { processChainQueue } from "../adapters/chain/queue";
+import { runExpiryTick } from "./expiry";
 
 let started = false;
 
@@ -31,6 +32,12 @@ export function startScheduler() {
   setInterval(() => {
     processChainQueue().catch((err) => logger.error("chain queue failed", { err: String(err) }));
   }, 3_000);
+
+  // expire stale credits/listings every 60s — fine-grained enough that a listing is
+  // never stale for long, cheap enough to ignore.
+  setInterval(() => {
+    runExpiryTick().catch((err) => logger.error("expiry tick failed", { err: String(err) }));
+  }, 60_000);
 
   logger.info("Scheduler started", { simTickMs: env.simTickMs });
 }

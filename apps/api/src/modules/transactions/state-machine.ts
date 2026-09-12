@@ -2,7 +2,7 @@ import type { TxStatus } from "@prisma/client";
 import { ApiError } from "../../lib/ApiError";
 
 /** IMPLEMENTATION_PLAN.md §5.6 — the only place transitions are decided. */
-const TRANSITIONS: Record<TxStatus, TxStatus[]> = {
+export const TRANSITIONS: Record<TxStatus, TxStatus[]> = {
   PENDING: ["MATCHED", "CANCELLED", "EXPIRED"],
   MATCHED: ["RESERVED", "CANCELLED", "EXPIRED"],
   RESERVED: ["PAYMENT_PENDING", "CANCELLED", "EXPIRED"],

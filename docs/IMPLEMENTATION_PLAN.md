@@ -544,7 +544,7 @@ createTransaction({buyerId, allocations, idempotencyKey}):
       listing.status = listing.remainingKwh == 0 ? RESERVED : PARTIAL
       create EnergyMatch{status: RESERVED}
 
-    fee     = round(total * avgPrice * PLATFORM_FEE_RATE, 4)   // 0.10 = ₹0.50/EC at ₹5
+    fee     = round(total * avgPrice * PLATFORM_FEE_RATE, 4)   // 0.05 = ₹0.25/EC at ₹5
     txn = create Transaction{ status: RESERVED, totalAmount, platformFee, sellerPayout }
     link matches -> txn
     audit(TRADE_MATCHED)
@@ -748,7 +748,7 @@ JWT_SECRET=<32+ random bytes>
 JWT_EXPIRES_IN=7d
 CORS_ORIGIN=http://localhost:5173,https://<vercel-app>.vercel.app
 
-PLATFORM_FEE_RATE=0.10
+PLATFORM_FEE_RATE=0.05
 CREDIT_VALIDITY_HOURS=72
 RESERVATION_TTL_MINUTES=5
 SIM_SPEED_MULTIPLIER=60
