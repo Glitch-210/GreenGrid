@@ -302,5 +302,37 @@ export async function runSeed(prisma: PrismaClient) {
     });
   }
 
+  // A couple of notifications so the bell has something in it on a fresh demo —
+  // the Notification table was previously never written to by anything at all.
+  console.log("Creating seller notifications...");
+  await prisma.notification.createMany({
+    data: [
+      {
+        userId: prosumer1.id,
+        type: "PAYMENT_RECEIVED",
+        title: "You've been paid",
+        message: "Payment received for your credits — ₹228.00 net of fees.",
+        isRead: false,
+        createdAt: new Date(now.getTime() - 40 * 60_000),
+      },
+      {
+        userId: prosumer1.id,
+        type: "SETTLEMENT_COMPLETE",
+        title: "Trade settled with the DISCOM",
+        message: "60.00 EC settled against the grid.",
+        isRead: true,
+        createdAt: new Date(now.getTime() - 90 * 60_000),
+      },
+      {
+        userId: prosumer2.id,
+        type: "PAYMENT_RECEIVED",
+        title: "You've been paid",
+        message: "Payment received for your credits — ₹114.00 net of fees.",
+        isRead: false,
+        createdAt: new Date(now.getTime() - 25 * 60_000),
+      },
+    ],
+  });
+
   console.log("Seed complete.");
 }

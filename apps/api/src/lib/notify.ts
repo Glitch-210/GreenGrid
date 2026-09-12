@@ -1,5 +1,5 @@
-import { prisma } from "../config/prisma";
 import { logger } from "./logger";
+import { createNotification } from "../modules/notifications/notifications.service";
 import { emitToUser } from "../sockets/io";
 import { SOCKET_EVENTS } from "../sockets/events";
 
@@ -22,7 +22,7 @@ export async function notify(
   extra?: Record<string, unknown>,
 ) {
   try {
-    const row = await prisma.notification.create({ data: { userId, type, title, message } });
+    const row = await createNotification(userId, type, title, message);
     emitToUser(userId, SOCKET_EVENTS.NOTIFICATION_NEW, {
       id: row.id,
       type,

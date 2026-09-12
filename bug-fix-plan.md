@@ -74,6 +74,20 @@ cancelled trades are struck through and marked "not earned". The nav item that s
 "Txns" but pointed at credit batches now reads "Sales" and points here, with a separate
 "Listings" entry.
 
+**Bug 12** added an expiry tick to the scheduler (every 60s) that marks stale credits
+and listings `EXPIRED`, plus a `CREDIT_EXPIRED` guard at listing creation so the failure
+reaches the seller publishing rather than a buyer at reservation. Credits with
+`reservedKwh > 0` are left alone — expiring under an in-flight purchase would strand it.
+
+**Bugs 8 and 9** were fixed together behind one `lib/notify.ts` helper that persists a
+notification and pushes it down the user's socket in one step; it never throws, because a
+notification is a side-effect of a trade and must not be able to fail one. Sellers are now
+notified — and emitted to — at reservation, payment and settlement, derived from
+`EnergyMatch` so multi-seller baskets reach every seller exactly once. The bell became a
+real menu button (`aria-expanded`, Escape-to-close, focus return) that marks items read
+through the previously-unused `PATCH /notifications/:id/read`. `useSocketInvalidate` was
+fixed first: it depended on an inline array literal, so it re-subscribed on every render.
+
 **Bugs 3, 25 and 26** were fixed together: seller earnings now come from `EnergyMatch`
 via a shared `getSellerTotals`, used by both `/users/dashboard` and `/analytics/me`,
 against one `SELLER_EARNED_STATUSES` list thresholded at `PAID`.
@@ -82,7 +96,7 @@ Verified live: all three prosumers can list again, the Sell page's advertised ce
 matches what the server accepts, a batch survives a partial listing with its remainder
 still listable, and a simulator-minted credit now appears in the dropdown.
 
-**Test suite:** 27/27 passing (6 suites), up from 13/19 — but see the caveat below. Eight new tests lock in the
+**Test suite:** 27/27 passing (6 suites), up from 13/19 — see the caveat below. Eight new tests lock in the
 fixes, including one asserting the balance invariant holds exactly across a
 reserve/release cycle on a quantity float64 cannot represent (33.3333). `apps/api` now runs Jest with `--runInBand` — these are integration tests against
 one shared database, and parallel workers were failing each other with serialization
@@ -90,7 +104,10 @@ errors; three fixture cleanups were also hardened to delete in FK order.
 
 **Known flakiness — not a code defect.** `TEST_DATABASE_URL` is unset, so the integration
 tests run against the same database as the dev server, whose scheduler polls settlements
-every 10s and ticks the simulator every 30s. Over a ~90s full run it can advance a test's
+every 10s and ticks the simulator every 30s. Five fixture cleanups have been hardened
+against it (deleting in FK order, matching on the row being removed rather than on a
+user that may already be gone), but the multi-allocation test still runs ~24s against a
+30s timeout on the remote Neon instance and can trip it under load. Over a ~90s full run it can advance a test's
 own transaction mid-assertion (`Illegal transaction transition: SETTLEMENT_PENDING ->
 PAYMENT_PENDING`) or mint credits onto a fixture meter. Every suite passes reliably in
 isolation; roughly one full run in two shows a single spurious failure. The fix is to
@@ -112,11 +129,11 @@ Everything else in this document is still open.
 | 5 | **P1** | Seller cannot cancel a listing — endpoint exists, no UI | `marketplace.routes.ts:13` | CONFIRMED — **FIXED** |
 | 6 | **P1** | Partially-listed credit becomes unlistable | `marketplace.service.ts:36` | CONFIRMED — **FIXED** |
 | 7 | **P1** | Cancelling one listing frees a credit still held by another | `marketplace.service.ts:69` | CONFIRMED — **FIXED** |
-| 8 | **P1** | Seller is never notified of anything — sale, payment, settlement | all `emitToUser` sites | CONFIRMED (inspection) |
-| 9 | **P1** | Notification bell is a dead button; `Notification` table never written | `AppShell.tsx:85` | CONFIRMED |
+| 8 | **P1** | Seller is never notified of anything — sale, payment, settlement | all `emitToUser` sites | CONFIRMED — **FIXED** |
+| 9 | **P1** | Notification bell is a dead button; `Notification` table never written | `AppShell.tsx:85` | CONFIRMED — **FIXED** |
 | 10 | **P1** | Prosumers can buy their own listings | `Marketplace.tsx:123` | CONFIRMED — **FIXED** |
 | 11 | **P1** | `reservedKwh` written as a JS float — breaks the balance invariant | `transactions.service.ts:126` | CONFIRMED — **FIXED** |
-| 12 | **P1** | Expired credits still listable; no expiry job | `scheduler.ts` | CONFIRMED (inspection) |
+| 12 | **P1** | Expired credits still listable; no expiry job | `scheduler.ts` | CONFIRMED — **FIXED** |
 | 13 | **P1** | No prosumer sales screen; nav "Txns" points at credits | `AppShell.tsx:31` | CONFIRMED — **FIXED** |
 | 14 | **P2** | `useAuth` is per-component state, not shared | `useAuth.ts:8` | CONFIRMED (inspection) |
 | 15 | **P2** | Socket auth token captured once, never refreshed | `socket.ts:8` | CONFIRMED (inspection) |
@@ -134,7 +151,7 @@ Everything else in this document is still open.
 | 27 | **P2** | Prosumer cannot discover their own meter id | no `GET /meters` | CONFIRMED (inspection) |
 | 28 | **P2** | Balance-invariant breach surfaces as a generic 500 | `credit-engine.service.ts:95` | CONFIRMED (inspection) |
 | 29 | **P2** | `POST /credits/generate` returns `201` with `data: null` | `credits.controller.ts:27` | CONFIRMED (inspection) |
-| 30 | **P3** | Dead code: `getPayment`, `createNotification`, `_unused` import | `payments.service.ts:171` | CONFIRMED (inspection) |
+| 30 | **P3** | Dead code: `getPayment`, `_unused` import (`createNotification` now wired) | `payments.service.ts:171` | CONFIRMED — partly fixed |
 | 31 | **P2** | Released listing stuck at `PARTIAL` when fully restored | `transactions.service.ts:238` | CONFIRMED — **FIXED** |
 
 ---
@@ -1097,7 +1114,7 @@ the module:
 
 - `payments.service.ts:171` `getPayment(transactionId)` — implemented, exported, never
   imported; there is no `GET /payments/:id` route.
-- `notifications.service.ts:14` `createNotification` — never called (Bug 9).
+- ~~`notifications.service.ts:14` `createNotification`~~ — now the single write path for notifications, called via `lib/notify.ts` (fixed with Bug 9).
 - `credit-engine.service.ts:5,14` — `nextTransactionId as _unused` imported and then
   `void _unused;`.
 
@@ -1143,12 +1160,12 @@ Several of these share a root cause; this order avoids rework.
 5. ~~**Bug 2**~~ — **DONE.** Rate set to 5% and made server-owned.
 6. ~~**Bug 10**~~ — **DONE.** `SELF_TRADE` guard server-side plus `isOwn` on the client
    (which also corrected the `MarketplaceListingDTO` drift, **Bug 17**).
-7. **Bug 12** — expiry job.
+7. ~~**Bug 12**~~ — **DONE.** Expiry tick plus a guard at listing creation.
 8. **Bugs 14 + 15 + 24** — auth context, socket lifecycle, 401 handling. One coherent
    session-management pass.
 9. ~~**Bug 18 + 5 + 13**~~ — **DONE.** `useApiMutation`, the my-listings screen with
    withdraw, and the seller-side sales screen.
-10. **Bugs 8 + 9** — seller events and notifications, once the screens exist to show them.
+10. ~~**Bugs 8 + 9**~~ — **DONE.** Seller-facing socket events and a working notification menu.
 11. **Bugs 19–23** — Sell-form hardening and `ProsumerCredits`, as one pass.
 12. **Bugs 17 + 27 + 29 + 30** — shared DTOs, `GET /meters`, response-shape and dead-code
     cleanup. Low risk, do last.
@@ -1156,10 +1173,11 @@ Several of these share a root cause; this order avoids rework.
 Done so far: **1, 2, 3, 4, 6, 7, 10, 11, 17, 25, 26, 31** — every P0, and the P1s that
 touch money, security or balance integrity.
 
-Of what remains, **Bug 12** (no expiry job) is the last correctness gap, and
-**Bugs 8 + 9** (the seller is never notified of a sale; the notification bell is inert)
-are the biggest remaining hole in the seller experience now that the screens exist to
-show them.
+Every P0 and P1 is now closed. What remains is P2/P3 polish: the session-management pass
+(**14 + 15 + 24** — auth context, socket token lifecycle, 401 redirect) is the most
+substantive, then Sell-form hardening (**19–23**) and the DTO/dead-code cleanup
+(**17 + 27 + 29 + 30**). **Bug 28** (invariant breach reports as an opaque 500) is small
+and worth doing whenever the credit engine is next touched.
 
 ---
 

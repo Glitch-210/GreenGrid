@@ -170,7 +170,12 @@ export async function createTransaction(buyer: AuthUser, input: CreateTransactio
       await audit(tx, "TRADE_MATCHED", "Transaction", created.id, buyer.id, { total: total.toString() });
       return created;
     },
-    { isolationLevel: "Serializable", timeout: 12_000 },
+    // 12s was not enough headroom for the documented target shape (a purchase
+    // spanning 20-40 listings): on slower storage the batch locks and per-credit
+    // writes ran past it and all three retries exhausted into TRANSACTION_TIMEOUT,
+    // failing a purchase that was otherwise progressing fine. Holding locks a few
+    // seconds longer is the lesser cost.
+    { isolationLevel: "Serializable", timeout: 30_000 },
   );
 
   // §10 risk row: retry on a serialization failure (expected under contention — the

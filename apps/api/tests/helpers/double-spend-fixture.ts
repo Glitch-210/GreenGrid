@@ -321,7 +321,13 @@ export async function cleanupManyListingsFixture() {
     const txns = await prisma.transaction.findMany({ where: { buyerId: { in: userIds } }, select: { id: true } });
     const txnIds = txns.map((t) => t.id);
     await prisma.auditLog.deleteMany({ where: { entityId: { in: txnIds } } });
-    await prisma.energyMatch.deleteMany({ where: { buyerId: { in: userIds } } });
+    // Clear matches by the listings they point at, not just by buyer: a crashed
+    // previous run can leave matches whose buyer is already gone, and those still
+    // hold EnergyMatch_listingId_fkey against the listings below.
+    const manyListings = await prisma.marketplaceListing.findMany({ where: { sellerId: { in: userIds } }, select: { id: true } });
+    await prisma.energyMatch.deleteMany({
+      where: { OR: [{ buyerId: { in: userIds } }, { listingId: { in: manyListings.map((l) => l.id) } }] },
+    });
     await prisma.transaction.deleteMany({ where: { id: { in: txnIds } } });
     await prisma.marketplaceListing.deleteMany({ where: { sellerId: { in: userIds } } });
     await prisma.energyCredit.deleteMany({ where: { ownerId: { in: userIds } } });
@@ -333,6 +339,9 @@ export async function cleanupManyListingsFixture() {
       await prisma.meterReading.deleteMany({ where: { meterId: { in: manyMeterIds } } });
     }
     await prisma.meter.deleteMany({ where: { meterNumber: { endsWith: "-MANY" } } });
+    // Sellers now receive notifications when a trade lands, and Notification_userId_fkey
+    // is RESTRICT, so these must go before the users they belong to.
+    await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   }
   const zone = await prisma.gridZone.findUnique({ where: { zoneCode: `${ZONE_CODE}-MANY` }, select: { id: true } });

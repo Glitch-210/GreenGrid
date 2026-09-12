@@ -15,7 +15,11 @@ import {
   type ManyListingsFixture,
 } from "./helpers/double-spend-fixture";
 
-jest.setTimeout(30_000);
+// Seeds 30 listings, runs one serializable 30-allocation purchase, then tears it all
+// down. Measured at ~24s, which left almost no headroom against the old 30s limit and
+// tripped roughly half of full-suite runs. The timeout is generous deliberately: this
+// test is about the purchase completing at all, not about how fast it is.
+jest.setTimeout(90_000);
 
 const LISTING_COUNT = 30;
 const KWH_EACH = 2;
