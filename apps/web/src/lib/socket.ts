@@ -6,7 +6,7 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(import.meta.env.VITE_API_ORIGIN ?? "http://localhost:5000", {
       // Read at construction time, so the singleton must be disposed on logout
-      // or the next user inherits this connection — and with it the previous
+      // or the next user inherits this connection -- and with it the previous
       // user's `user:<id>` room. See disconnectSocket below.
       auth: { token: localStorage.getItem("token") },
       autoConnect: true,
