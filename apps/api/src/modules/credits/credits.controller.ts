@@ -24,7 +24,14 @@ export async function getCreditHandler(req: Request, res: Response, next: NextFu
 export async function generateCreditHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const credit = await creditEngine.mintFromReading(req.body.readingId, req.user!);
-    ok(res, credit, undefined, 201);
+    // A reading with no surplus consumes the reading but mints nothing. Returning
+    // 201 + data:null announced a resource that does not exist, and no
+    // ApiSuccess<EnergyCreditDTO> consumer is typed for a null payload.
+    if (!credit) {
+      ok(res, { minted: false, reason: "NO_SURPLUS" }, undefined, 200);
+      return;
+    }
+    ok(res, { minted: true, credit }, undefined, 201);
   } catch (err) {
     next(err);
   }

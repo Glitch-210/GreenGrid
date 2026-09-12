@@ -6,16 +6,14 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useApiQuery } from "../../hooks/useApi";
 import { useAuth } from "../../hooks/useAuth";
 import { formatEC, formatINR } from "../../lib/format";
-
-interface ProsumerDashboardData {
-  creditBalance: { available: string; listable: string; reserved: string; sold: string; retired: string };
-  totalEarnings: string;
-  creditCount: number;
-}
+import type { ProsumerDashboardDTO } from "@wattshare/shared";
 
 export default function ProsumerDashboard() {
   const { user } = useAuth();
-  const { data } = useApiQuery<ProsumerDashboardData>(["dashboard", "prosumer"], "/users/dashboard");
+  const { data, isLoading, isError } = useApiQuery<ProsumerDashboardDTO>(
+    ["dashboard", "prosumer"],
+    "/users/dashboard",
+  );
 
   const available = Number(data?.creditBalance.available ?? 0);
   const reserved = Number(data?.creditBalance.reserved ?? 0);
@@ -34,7 +32,11 @@ export default function ProsumerDashboard() {
         <p className="font-mono text-xs font-bold uppercase tracking-wider">
           Prosumer Node — {user?.displayAlias ?? "…"}
         </p>
-        <StatusBadge status="live">Online</StatusBadge>
+        {/* Was hardcoded "Online", so a session that could no longer load
+            anything still presented as healthy. Driven off the query now. */}
+        <StatusBadge status={isError ? "fault" : isLoading ? "idle" : "live"}>
+          {isError ? "Unreachable" : isLoading ? "Connecting" : "Online"}
+        </StatusBadge>
       </div>
 
       <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">EC PORTFOLIO BREAKDOWN</h1>

@@ -115,6 +115,14 @@ live region that is `role="alert"` for errors and `role="status"` for success. F
 not fixed: `text-fault` measures 3.55:1 on white and fails WCAG AA — pre-existing and
 app-wide, see that section.
 
+**Bugs 15, 17, 23, 24, 27, 28, 29 and 30** closed the remainder. Sockets are disposed at
+every session boundary; a 401 now ends the session through the auth context instead of
+leaving a dead one rendering; `ProsumerCredits` became a real screen (states, filter, sort,
+deep link to sell); `GET /meters` made the readings API reachable by its intended caller;
+the invariant breach is a named, logged 500; `/credits/generate` no longer claims to have
+created something it did not; and the DTOs were reconciled against the wire, with the
+prosumer dashboard tethered to a shared type the server is annotated against.
+
 **Bugs 3, 25 and 26** were fixed together: seller earnings now come from `EnergyMatch`
 via a shared `getSellerTotals`, used by both `/users/dashboard` and `/analytics/me`,
 against one `SELLER_EARNED_STATUSES` list thresholded at `PAID`.
@@ -853,6 +861,8 @@ the `localStorage` write-through so refresh still restores the session.
 
 ## Bug 15 — Socket token is captured once and never refreshed
 
+**Status: FIXED.** `disconnectSocket()` disposes the singleton on login, on logout and on a 401.
+
 **Status: CONFIRMED (inspection).**
 
 `lib/socket.ts:5-12` builds the socket lazily and reads the token **inside the
@@ -864,6 +874,23 @@ authenticated as the first user, receiving their `user:<id>` room events — inc
 
 **Fix.** Export a `disconnectSocket()` that closes the socket and nulls the singleton;
 call it from `logout()`. Reconnect with the fresh token on next `getSocket()`.
+
+### Fix — APPLIED
+
+`lib/socket.ts` gained `disconnectSocket()`: it removes all listeners, disconnects and
+nulls the singleton, so the next `getSocket()` dials again with whatever token is current.
+It is called from three places in `AuthProvider`:
+
+- **`logout()`** — the case in the bug. Clearing storage left a live socket still joined to
+  the departing user's `user:<id>` room.
+- **`login()` / `register()`** (via `persist`) — a socket opened before this token existed
+  (or with a `null` token) would otherwise be inherited by the incoming session.
+- **the 401 handler** (Bug 24) — a session the server has rejected must not keep a
+  connection authenticated as the user who just lost it.
+
+The `auth: { token: ... }` read is annotated at the call site explaining that it is
+evaluated once at construction, which is what makes disposal load-bearing rather than
+tidy-up.
 
 ---
 
@@ -935,6 +962,8 @@ separate mislabelling, not part of this contradiction.
 
 ## Bug 17 — `MarketplaceListingDTO` does not match the API
 
+**Status: FIXED.** The listing DTO was corrected with Bug 10; the dashboard now has a shared `ProsumerDashboardDTO`, and the `Meter`/`Transaction`/`Settlement` DTOs were reconciled against the wire.
+
 **Status: CONFIRMED.** The live response keys are
 `createdAt, creditId, expiresAt, gridZoneId, id, pricePerKwh, quantityKwh, remainingKwh,
 sellerAlias, status, zoneCode, zoneName`. **`sellerId` is absent; `zoneCode` is present** —
@@ -962,6 +991,35 @@ AppShell copy omits `creditCount`). Add a `ProsumerDashboardDTO` to
 rows the same way — `MeterDTO` omits `ratedKw`, `TransactionDTO` omits
 `idempotencyKey`/`chainAttempts`/`failureReason` (all observed on the wire),
 `SettlementDTO` omits `attempts`/`settledAt` — because those routes return raw Prisma rows.
+
+### Fix — APPLIED
+
+**`MarketplaceListingDTO` was already corrected as part of Bug 10** — `sellerId` dropped,
+`zoneCode` and `isOwn` added — and now matches `listListings`' projection field for field.
+
+**The prosumer dashboard now has a DTO.** `ProsumerDashboardDTO` in
+`packages/shared/src/types.ts` replaces the two inline re-declarations in
+`ProsumerDashboard.tsx` and `AppShell.tsx` (the AppShell copy had been omitting fields).
+`prosumerDashboard` in `users.service.ts` is **annotated with that return type**, so the
+two sides can no longer drift without a compile error — which is the actual fix; a shared
+interface nobody checks against drifts just as quietly.
+
+**The other three drifting DTOs were reconciled against the wire**, verified by
+serializing real rows and comparing field by field:
+
+| DTO | added | wire type confirmed |
+|---|---|---|
+| `MeterDTO` | `ratedKw`, `createdAt`, optional `gridZone` | `string`, `string`, `object` |
+| `TransactionDTO` | `idempotencyKey`, `chainAttempts`, `failureReason` | `string`/null, `number`, `string`/null |
+| `SettlementDTO` | `attempts`, `failureReason`, `createdAt`, `settledAt` | `number`, `string`/null, `string`, `string`/null |
+
+All three now declare every field those routes actually return.
+
+**Not done — the Zod half.** The plan's "longer term, derive the DTO from a Zod schema and
+parse responses" is untouched. Runtime response validation is a structural change across
+every route and screen, and it is different work from correcting the types. Until it
+lands these DTOs stay hand-maintained and can drift again; the dashboard is the only one
+with a compile-time tether.
 
 ---
 
@@ -1202,6 +1260,8 @@ the same problem. Not changed here — recolouring the palette is well outside t
 
 ## Bug 23 — `ProsumerCredits` is inert
 
+**Status: FIXED.** The screen renders loading / error / empty distinctly, filters and sorts, and every sellable batch deep-links into the Sell page.
+
 **Status: CONFIRMED.** The live page rendered **13 credit cards and 0 interactive
 elements** inside `<main>` — no buttons, links, inputs or selects. Status badges rendered
 `MINTED` and `AVAILABLE`.
@@ -1221,9 +1281,31 @@ batch" button per row deep-linking to `/prosumer/sell?creditId=...` with `Prosum
 reading the param to preselect. Once Bug 1 lands, drive the badge off sellability rather
 than a status allowlist.
 
+### Fix — APPLIED
+
+- **Three states, told apart.** `isLoading` renders a `role="status"` line, `isError` a
+  `role="alert"` card with a **Retry** button wired to `refetch()`, and the empty state
+  only when the fetch actually succeeded with nothing in it. A failed fetch previously
+  rendered exactly like an account with no credits.
+- **"Sell this batch"** per row, linking to `/prosumer/sell?creditId=…`. `ProsumerSell`
+  reads the param and preselects the batch **only once the sellable list has loaded and
+  only if that batch is in it**, so a stale or hand-edited link cannot select something
+  the form would immediately reject.
+- **The badge is driven off sellability, not a status allowlist.** The screen also queries
+  `/credits?sellable=true` — the same query key the Sell page uses, so it is one cache
+  entry and the two screens cannot disagree — and reads `listableKwh` from it. A batch
+  shows **Sellable** when the server says there is a remainder, **Expired** past
+  `expiresAt`, and its raw status otherwise. This matters because `availableKwh` does not
+  drop when a batch is listed, so sellability genuinely cannot be computed from the row.
+- **Filter** (All / Sellable / Expired, as `aria-pressed` toggles) and **sort** (newest /
+  expiring soon / largest). The empty state distinguishes "no credits at all" from "no
+  batches match this filter".
+
 ---
 
 ## Bug 27 — A prosumer cannot discover their own meter
+
+**Status: FIXED.** `GET /meters` and `GET /meters/:id` are implemented, making the readings API reachable by its intended caller.
 
 **Status: CONFIRMED (inspection).**
 
@@ -1239,9 +1321,42 @@ generation-history view on `/prosumer` — currently the dashboard shows portfol
 but nothing about the solar generation that produced them, which is the prosumer's actual
 physical activity.
 
+### Fix — APPLIED
+
+Two routes on `meters.routes.ts`, both behind `authMiddleware`:
+
+- **`GET /meters`** → `listMyMeters`, scoped by `userId: user.id` **in the query**. Not
+  fetch-then-check: there is no id to guess and no ownership check to forget, so Bug 4's
+  failure mode is impossible here by construction.
+- **`GET /meters/:id`** → `getMeterById`, owner-only via the existing `assertCanRead`, so
+  oversight roles keep their read exemption.
+
+Both join the grid zone for display. `docs/backend.md:274` specified the second one; it
+now exists.
+
+Verified live against the seeded database:
+
+| check | result |
+|---|---|
+| `listMyMeters(prosumer1)` | 1 meter — `MTR-101@GZ-AHM-W`, rated 6 kW |
+| every returned meter belongs to the caller | true |
+| `getMeterById` as the owner | ok |
+| `getMeterById` as a **different prosumer** | **404 NOT_FOUND** (not 403 — a 403 confirms the id exists) |
+| `getMeterById` as REGULATOR | allowed, oversight read |
+| `listReadings` using the id the new endpoint returned | **510 readings** |
+
+That last row is the point of the bug: the readings API held 510 rows for this prosumer
+and was unreachable because nothing would tell them their own meter id.
+
+**Note.** The generation-history *screen* the plan mentions as unblocked is not built —
+the endpoints exist and are verified, but no frontend consumes them yet. That is a new
+feature, not part of this defect.
+
 ---
 
 ## Bug 28 — Invariant breach surfaces as an opaque 500
+
+**Status: FIXED.** The guard throws a named `CREDIT_INVARIANT_VIOLATION` `ApiError` with the full balance breakdown, logged at error level.
 
 **Status: CONFIRMED (inspection).**
 
@@ -1256,9 +1371,31 @@ affected.
 payload, and log at `error` level with the full balance breakdown. This is the alarm for
 Bug 11; it should be legible when it fires.
 
+### Fix — APPLIED
+
+- **`CREDIT_INVARIANT_VIOLATION`** added to `ERROR_CODES`, and **`ApiError.internal()`**
+  added beside the existing 400/401/403/404/409 helpers — there was no 500 constructor, so
+  a typed server fault was not expressible.
+- **`assertInvariant`** now builds a detail payload — credit row id, `creditId`, all five
+  balances, the computed `sum`, the `delta`, and `reason` (`SUM_MISMATCH` vs
+  `NEGATIVE_BALANCE`) — logs it at `error` level, then throws
+  `ApiError.internal("CREDIT_INVARIANT_VIOLATION", …, details)`. Both branches are
+  covered; the negative-balance case used to throw a message with no numbers in it at all.
+- **`error.middleware.ts` now logs 5xx `ApiError`s.** This was a real trap: the middleware
+  logged *only* non-`ApiError`s, so typing the error would have **silenced** the alarm it
+  was meant to make legible. 4xx stays quiet (the caller's problem); `details` is logged
+  but deliberately **not** returned, being operator diagnostics rather than something a
+  client can act on.
+
+Verified: `ApiError.internal("CREDIT_INVARIANT_VIOLATION", …)` maps to **status 500, code
+`CREDIT_INVARIANT_VIOLATION`** through `error.middleware.ts`, in place of the previous
+anonymous `500 INTERNAL_ERROR`.
+
 ---
 
 ## Bug 29 — `POST /credits/generate` returns `201` with a null body
+
+**Status: FIXED.** The no-surplus path returns `200 { minted: false, reason: NO_SURPLUS }`; a real mint returns `201 { minted: true, credit }`.
 
 **Status: CONFIRMED (inspection).** The live probe hit `CREDITS_ALREADY_ISSUED` first, so
 the null path was not reached; the code path is unambiguous.
@@ -1271,6 +1408,21 @@ consumer is typed to handle.
 
 **Fix.** Return `200` with an explicit `{ minted: false, reason: "NO_SURPLUS" }`. Reserve
 `201` for an actual mint.
+
+### Fix — APPLIED
+
+`generateCreditHandler` branches on the null:
+
+- no surplus → **`200 { minted: false, reason: "NO_SURPLUS" }`**
+- minted → **`201 { minted: true, credit }`**
+
+The success envelope is now discriminated, so a consumer can tell the two apart without
+null-checking a field that was typed as non-null. Nothing consumes this route yet — no
+frontend caller, no test — so the shape change breaks nothing.
+
+Verified live: an unissued zero-surplus `VERIFIED` reading was found in the seeded data and
+run through `mintFromReading`, which returned `null` — the branch that previously produced
+`201` with `data: null` and now produces the `200`.
 
 ---
 
@@ -1297,11 +1449,26 @@ restored quantity, so a `PARTIAL` listing that is now whole again stays `PARTIAL
 same release path also sets the credit to `AVAILABLE` unconditionally, which is Bug 7's
 failure mode — fix both together.
 
+### Second half — APPLIED later
+
+The status recompute landed but the unconditional `status: "AVAILABLE"` on the credit did
+not, so Bug 7's failure mode was still live on the release path. It is reachable: a credit
+backing **two** listings can be `RETIRED` by settling the first
+(`settlement.service.ts:131`) while the second is still reserved — releasing that second
+reservation then stamped `AVAILABLE` back over the retired credit. The write now skips the
+status when the credit is `FROZEN`/`EXPIRED`/`RETIRED`/`SETTLED`, restoring balance without
+resurrecting a credit that is dead for reasons unrelated to this reservation.
+
+(`FROZEN` has no writer anywhere in the codebase today, so only the `RETIRED` path was
+actually reachable; the guard covers the whole set rather than the one case.)
+
 ---
 
 # P3
 
 ## Bug 24 — 401 clears the token but leaves the user
+
+**Status: FIXED.** The 401 interceptor now calls the auth context's `logout()`, so the user is cleared, the socket dropped, and `RequireAuth` redirects.
 
 **Status: CONFIRMED.** With an invalid token, reloading `/prosumer` produced: token
 cleared from storage (**true**), `user` still in storage (**true**), still on `/prosumer`
@@ -1319,9 +1486,32 @@ passing. Nothing navigates. The hardcoded "Online" badge
 place, call the context's `logout()` from the interceptor rather than hard-navigating, so
 app state and URL stay consistent.
 
+### Fix — APPLIED
+
+`lib/api.ts` exports `setUnauthorizedHandler`; `AuthProvider` registers its own `logout`
+in an effect and unregisters on unmount. On a 401 the interceptor calls it, which clears
+both storage keys, disposes the socket (Bug 15) and sets `user` to `null` — at which point
+`isAuthenticated` goes false and `RequireAuth` renders its existing
+`<Navigate to="/login" replace />`. **No hard navigate**, so app state and URL stay
+consistent, and the provider needs no router context (it sits above `BrowserRouter`).
+
+Two details worth recording:
+
+- **Sign-in failures are excluded.** A rejected `POST /auth/login` is a 401 too. Treating
+  it as an expired session would tear down state on every mistyped password, so the
+  interceptor skips any request whose URL starts with `/auth/`.
+- **A fallback for before the provider mounts** clears `token` **and** `user` directly —
+  leaving `user` behind is the precise bug, so the floor case must not reproduce it.
+
+The hardcoded `"Online"` badge is gone too: it now reads the dashboard query, showing
+**Connecting** while loading and a red **Unreachable** on error, so a session that cannot
+load anything no longer presents as healthy.
+
 ---
 
 ## Bug 30 — Dead code on the seller path
+
+**Status: FIXED.** Both remaining leftovers are deleted.
 
 **Status: CONFIRMED (inspection).** Three leftovers, harmless but misleading when reading
 the module:
@@ -1334,6 +1524,17 @@ the module:
 
 **Fix.** Delete the `_unused` import. Either route `getPayment` or delete it.
 `createNotification` gets wired up by Bug 9.
+
+### Fix — APPLIED
+
+- **`nextTransactionId as _unused`** and its `void _unused;` are gone from
+  `credit-engine.service.ts`.
+- **`getPayment` deleted**, not routed. Routing it would have duplicated an existing
+  capability — `GET /transactions/:id` already includes `payment: true` — *and* required a
+  fresh ownership check, since `getPayment(transactionId)` had none and would have
+  reopened Bug 4 on a new surface. Adding an authorization surface for a consumer that
+  does not exist is the wrong trade; confirmed it had no callers before removing it.
+- `createNotification` was wired up by Bug 9, as noted.
 
 ---
 

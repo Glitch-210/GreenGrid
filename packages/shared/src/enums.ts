@@ -129,6 +129,9 @@ export const ERROR_CODES = [
   "METER_NOT_ACTIVE",
   "RATE_LIMITED",
   "TRANSACTION_TIMEOUT",
+  // The credit balance invariant (available + reserved + sold + retired == quantity)
+  // has been violated. A 500 — the caller cannot fix it — but a named one.
+  "CREDIT_INVARIANT_VIOLATION",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

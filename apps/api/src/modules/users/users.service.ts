@@ -4,6 +4,7 @@ import { env } from "../../config/env";
 import { getSellerTotals } from "../transactions/seller-earnings.service";
 import { sellableTotal } from "../credits/credit-engine.service";
 import type { AuthUser } from "../../middleware/auth.middleware";
+import type { ProsumerDashboardDTO } from "@wattshare/shared";
 
 export async function getDashboard(user: AuthUser) {
   if (user.role === "PROSUMER") return prosumerDashboard(user.id);
@@ -13,7 +14,9 @@ export async function getDashboard(user: AuthUser) {
   return adminDashboard();
 }
 
-async function prosumerDashboard(userId: string) {
+// Annotated against the shared DTO so a field added here and forgotten on the
+// client (or vice versa) is a compile error rather than a runtime undefined.
+async function prosumerDashboard(userId: string): Promise<ProsumerDashboardDTO> {
   const credits = await prisma.energyCredit.findMany({ where: { ownerId: userId } });
   const totals = credits.reduce(
     (acc, c) => {

@@ -2,9 +2,10 @@ import { prisma } from "../../config/prisma";
 import { Decimal } from "../../lib/decimal";
 import { ApiError } from "../../lib/ApiError";
 import { audit } from "../../lib/audit";
-import { nextCreditId, nextTransactionId as _unused } from "../../lib/ids";
+import { nextCreditId } from "../../lib/ids";
 import { eligibleCreditKwh } from "../../lib/calculations";
 import { env } from "../../config/env";
+import { logger } from "../../lib/logger";
 import { enqueueChainOp } from "../../adapters/chain/queue";
 import { pseudoAddress } from "../../adapters/chain/chain.service";
 import { emitToUser } from "../../sockets/io";
@@ -12,8 +13,6 @@ import { SOCKET_EVENTS } from "../../sockets/events";
 import { assertOwns, assertCanRead } from "../../lib/authorize";
 import type { AuthUser } from "../../middleware/auth.middleware";
 import type { CreditStatus } from "@prisma/client";
-
-void _unused;
 
 /**
  * Mint an EnergyCredit batch from a VERIFIED, not-yet-issued MeterReading.
@@ -47,6 +46,8 @@ export async function mintFromReading(readingId: string, requestedBy?: AuthUser)
     const zone = fullReading.meter.gridZone;
     const eligible = eligibleCreditKwh(fullReading.generationKwh, fullReading.consumptionKwh, zone.lossFactor);
     if (eligible.lte(0)) {
+      // The reading is consumed either way, but no credit exists. The caller is
+      // told so explicitly rather than handed a null that reads as a mint.
       await tx.meterReading.update({ where: { id: readingId }, data: { creditIssued: true } });
       return null;
     }
@@ -97,15 +98,49 @@ function toWattHours(kwh: Decimal.Value): string {
   return new Decimal(kwh).times(1000).toFixed(0);
 }
 
-/** available + reserved + sold + retired == quantity, available/reserved >= 0. */
-function assertInvariant(c: { quantityKwh: Decimal; availableKwh: Decimal; reservedKwh: Decimal; soldKwh: Decimal; retiredKwh: Decimal }) {
+interface CreditBalance {
+  id?: string;
+  creditId?: string;
+  quantityKwh: Decimal;
+  availableKwh: Decimal;
+  reservedKwh: Decimal;
+  soldKwh: Decimal;
+  retiredKwh: Decimal;
+}
+
+/**
+ * available + reserved + sold + retired == quantity, available/reserved >= 0.
+ *
+ * This is the alarm for the precision bugs; it has to be legible when it fires.
+ * A raw Error was mapped to an anonymous 500 INTERNAL_ERROR by
+ * error.middleware.ts with no code and no way to tell which credit broke, so it
+ * throws a named ApiError carrying the full breakdown and logs at error level.
+ */
+function assertInvariant(c: CreditBalance) {
   const sum = new Decimal(c.availableKwh).plus(c.reservedKwh).plus(c.soldKwh).plus(c.retiredKwh);
-  if (!sum.equals(c.quantityKwh)) {
-    throw new Error(`Credit balance invariant violated: ${sum.toString()} != ${c.quantityKwh.toString()}`);
-  }
-  if (c.availableKwh.lt(0) || c.reservedKwh.lt(0)) {
-    throw new Error("Credit balance went negative");
-  }
+  const negative = c.availableKwh.lt(0) || c.reservedKwh.lt(0);
+  if (sum.equals(c.quantityKwh) && !negative) return;
+
+  const details = {
+    creditRowId: c.id ?? null,
+    creditId: c.creditId ?? null,
+    quantityKwh: c.quantityKwh.toString(),
+    availableKwh: c.availableKwh.toString(),
+    reservedKwh: c.reservedKwh.toString(),
+    soldKwh: c.soldKwh.toString(),
+    retiredKwh: c.retiredKwh.toString(),
+    sum: sum.toString(),
+    delta: sum.minus(c.quantityKwh).toString(),
+    reason: negative ? "NEGATIVE_BALANCE" : "SUM_MISMATCH",
+  };
+  logger.error("Credit balance invariant violated", details);
+  throw ApiError.internal(
+    "CREDIT_INVARIANT_VIOLATION",
+    negative
+      ? "Credit balance went negative"
+      : `Credit balance invariant violated: ${sum.toString()} != ${c.quantityKwh.toString()}`,
+    details,
+  );
 }
 
 /** Statuses in which a credit can never be sold, whatever its balance says. */

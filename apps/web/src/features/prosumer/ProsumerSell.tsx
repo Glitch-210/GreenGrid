@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -29,7 +30,13 @@ export default function ProsumerSell() {
 
   const feeRate = dashboard ? Number(dashboard.platformFeeRate) : FALLBACK_FEE_RATE;
 
+  // Deep link from "Sell this batch" on /prosumer/credits. Applied once the
+  // batch list has loaded and only if that batch is actually sellable, so a
+  // stale link cannot select something the form would then reject.
+  const [searchParams] = useSearchParams();
+  const linkedCreditId = searchParams.get("creditId");
   const [creditId, setCreditId] = useState("");
+  const [linkApplied, setLinkApplied] = useState(false);
   const [quantityKwh, setQuantityKwh] = useState("");
   // No magic default: the price is seeded from the selected batch's zone basePrice
   // below, so the form opens inside the band it advertises rather than at a
@@ -56,6 +63,12 @@ export default function ProsumerSell() {
   // What the server will accept, not the raw balance — availableKwh still counts
   // quantity already committed to open listings.
   const maxKwh = selectedCredit ? Number(selectedCredit.listableKwh) : 0;
+
+  useEffect(() => {
+    if (linkApplied || !linkedCreditId || !credits) return;
+    setLinkApplied(true);
+    if (credits.some((c) => c.id === linkedCreditId)) setCreditId(linkedCreditId);
+  }, [linkApplied, linkedCreditId, credits]);
 
   const priceFloor = selectedZone ? Number(selectedZone.priceFloor) : null;
   const priceCeiling = selectedZone ? Number(selectedZone.priceCeiling) : null;

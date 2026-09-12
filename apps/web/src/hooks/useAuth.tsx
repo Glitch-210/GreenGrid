@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { api } from "../lib/api";
+import { api, setUnauthorizedHandler } from "../lib/api";
+import { disconnectSocket } from "../lib/socket";
 import type { Role, UserDTO } from "@wattshare/shared";
 
 interface StoredUser extends UserDTO {}
@@ -33,6 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const persist = useCallback((token: string, u: StoredUser) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(u));
+    // Drop any socket opened before this token existed. getSocket() reads the
+    // token once, at construction, so a connection made earlier would stay
+    // authenticated as whoever was here before.
+    disconnectSocket();
     setUser(u);
   }, []);
 
@@ -59,8 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    // Storage alone leaves a live socket still joined to the departing user's
+    // `user:<id>` room, delivering their events to whoever logs in next.
+    disconnectSocket();
     setUser(null);
   }, []);
+
+  // A 401 from any request means this session is over: clear it the same way an
+  // explicit logout does, so RequireAuth sends the user to /login instead of
+  // rendering a dashboard that can no longer load anything.
+  useEffect(() => {
+    setUnauthorizedHandler(logout);
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
 
   const value = useMemo<AuthContextValue>(
     () => ({ user, isAuthenticated: !!user, login, register, logout }),
