@@ -27,8 +27,8 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">ADMIN / REGULATOR</h1>
-      <p className="mb-4 font-mono text-xs uppercase tracking-wider text-on-surface-variant">Platform-wide audit &amp; controls</p>
+      <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">ADMIN CONTROL PANEL</h1>
+      <p className="mb-4 font-mono text-xs uppercase tracking-wider text-on-surface-variant">Platform-wide system controls &amp; demo simulation triggers</p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <MetricTile label="Users" value={data?.userCount ?? "—"} />
