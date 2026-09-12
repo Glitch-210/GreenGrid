@@ -5,6 +5,7 @@ import { ApiError } from "../../lib/ApiError";
 import { CLOCK_SKEW_MINUTES, GENERATION_RATED_MULTIPLIER, GENERATION_MEDIAN_MULTIPLIER, TRAILING_READING_WINDOW } from "../../config/constants";
 import { isUniqueConstraintOn } from "../../lib/prisma-errors";
 import { getSimulatedTime } from "./simulated-clock";
+import { assertOwns, assertCanRead } from "../../lib/authorize";
 import type { CreateMeterInput, IngestReadingInput } from "@wattshare/shared";
 import type { AuthUser } from "../../middleware/auth.middleware";
 
@@ -20,7 +21,13 @@ export async function createMeter(user: AuthUser, input: CreateMeterInput) {
   });
 }
 
-export async function listReadings(meterId: string, page: number, pageSize: number) {
+export async function listReadings(user: AuthUser, meterId: string, page: number, pageSize: number) {
+  // Generation history is behavioural data (when someone is home, what their array
+  // produces), so it is owner-only — oversight roles may read for reconciliation.
+  const meter = await prisma.meter.findUnique({ where: { id: meterId } });
+  if (!meter) throw ApiError.notFound("Meter not found");
+  assertCanRead(user, meter.userId, "Meter");
+
   const [items, total] = await Promise.all([
     prisma.meterReading.findMany({
       where: { meterId },
@@ -41,7 +48,23 @@ function payloadHash(meterId: string, externalId: string, timestamp: Date, gen: 
  * Ingest + validate one reading per the spec in IMPLEMENTATION_PLAN.md §5.1.
  * Returns the created (or pre-existing, on dedupe) reading.
  */
-export async function ingestReading(meterId: string, input: IngestReadingInput) {
+/**
+ * Request-facing ingest. Strictly owner-only — no oversight exemption: a reading
+ * flows straight into mintFromReading, so write access here is the power to mint
+ * credits into someone's account.
+ */
+export async function ingestReading(user: AuthUser, meterId: string, input: IngestReadingInput) {
+  const meter = await prisma.meter.findUnique({ where: { id: meterId } });
+  if (!meter) throw ApiError.notFound("Meter not found");
+  assertOwns(user, meter.userId, "Meter");
+  return ingestReadingUnchecked(meterId, input);
+}
+
+/**
+ * Ingest with no authorization check — for trusted in-process callers only (the
+ * meter simulator, which acts as the device itself). Never call from a request path.
+ */
+export async function ingestReadingUnchecked(meterId: string, input: IngestReadingInput) {
   const meter = await prisma.meter.findUnique({ where: { id: meterId } });
   if (!meter) throw ApiError.notFound("Meter not found");
 

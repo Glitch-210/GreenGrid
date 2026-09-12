@@ -9,6 +9,8 @@ import { enqueueChainOp } from "../../adapters/chain/queue";
 import { pseudoAddress } from "../../adapters/chain/chain.service";
 import { emitToUser } from "../../sockets/io";
 import { SOCKET_EVENTS } from "../../sockets/events";
+import { assertOwns, assertCanRead } from "../../lib/authorize";
+import type { AuthUser } from "../../middleware/auth.middleware";
 import type { CreditStatus } from "@prisma/client";
 
 void _unused;
@@ -19,7 +21,7 @@ void _unused;
  * (readingId is @unique), and gross surplus > 0 else no credit is minted.
  * IMPLEMENTATION_PLAN.md §5.1
  */
-export async function mintFromReading(readingId: string) {
+export async function mintFromReading(readingId: string, requestedBy?: AuthUser) {
   const credit = await prisma.$transaction(async (tx) => {
     const reading = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM "MeterReading" WHERE id = ${readingId} FOR UPDATE
@@ -30,6 +32,10 @@ export async function mintFromReading(readingId: string) {
       where: { id: readingId },
       include: { meter: { include: { gridZone: true } } },
     });
+
+    // When a request drives this (POST /credits/generate) the caller must own the
+    // meter. The scheduler/simulator passes no user and is trusted.
+    if (requestedBy) assertOwns(requestedBy, fullReading.meter.userId, "Reading");
 
     if (fullReading.status !== "VERIFIED") {
       throw ApiError.badRequest("READING_NOT_VERIFIED", "Reading has not been verified");
@@ -75,7 +81,10 @@ export async function mintFromReading(readingId: string) {
   enqueueChainOp(
     { op: "mint", creditId: credit.creditId, qtyWh: toWattHours(credit.quantityKwh), owner: pseudoAddress(credit.ownerId) },
     async (txHash) => {
-      await prisma.energyCredit.update({ where: { id: credit.id }, data: { blockchainTxHash: txHash, status: "MINTED" } });
+      // Record the anchor only. Status must NOT become "MINTED" here: being on
+      // chain says nothing about sellability, and overwriting AVAILABLE hid every
+      // freshly minted credit from the seller's Sell page.
+      await prisma.energyCredit.update({ where: { id: credit.id }, data: { blockchainTxHash: txHash } });
       emitToUser(credit.ownerId, SOCKET_EVENTS.CREDIT_MINTED, { creditId: credit.creditId, blockchainTxHash: txHash });
     },
   );
@@ -99,15 +108,44 @@ function assertInvariant(c: { quantityKwh: Decimal; availableKwh: Decimal; reser
   }
 }
 
-export async function listCreditsForOwner(ownerId: string, status?: CreditStatus) {
-  return prisma.energyCredit.findMany({
+/** Statuses in which a credit can never be sold, whatever its balance says. */
+const UNSELLABLE_STATUSES: CreditStatus[] = ["FROZEN", "EXPIRED", "RETIRED", "SETTLED"];
+
+export async function listCreditsForOwner(ownerId: string, status?: CreditStatus, sellable?: boolean) {
+  const credits = await prisma.energyCredit.findMany({
     where: { ownerId, ...(status ? { status } : {}) },
     orderBy: { createdAt: "desc" },
   });
+  if (!sellable) return credits;
+
+  // A credit's availableKwh does NOT drop when it is listed (only a buyer's
+  // reservation moves balance — §5.6), so "how much can I still list?" is
+  // availableKwh minus what open listings already spoke for. Anything with a
+  // positive remainder is sellable regardless of status.
+  const listed = await prisma.marketplaceListing.groupBy({
+    by: ["creditId"],
+    where: { creditId: { in: credits.map((c) => c.id) }, status: { in: ["ACTIVE", "PARTIAL"] } },
+    _sum: { remainingKwh: true },
+  });
+  const listedByCredit = new Map(listed.map((l) => [l.creditId, l._sum.remainingKwh ?? new Decimal(0)]));
+  const now = new Date();
+
+  return credits
+    .filter((c) => c.expiresAt > now && !UNSELLABLE_STATUSES.includes(c.status))
+    .map((c) => ({
+      ...c,
+      // What the seller may actually list right now — the Sell page must offer
+      // this, not availableKwh, or it advertises a ceiling the server rejects.
+      listableKwh: new Decimal(c.availableKwh).minus(listedByCredit.get(c.id) ?? new Decimal(0)),
+    }))
+    .filter((c) => c.listableKwh.gt(0));
 }
 
-export async function getCreditById(id: string) {
+export async function getCreditById(user: AuthUser, id: string) {
   const credit = await prisma.energyCredit.findUnique({ where: { id } });
   if (!credit) throw ApiError.notFound("Credit not found");
+  // Without this, any authenticated user could read any credit — and the row leaks
+  // sourceMeterId and readingId, the exact ids needed to attack the meter endpoints.
+  assertCanRead(user, credit.ownerId, "Credit");
   return credit;
 }

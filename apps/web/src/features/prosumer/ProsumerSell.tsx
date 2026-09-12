@@ -2,50 +2,70 @@ import { useMemo, useState } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { StatusBadge } from "../../components/ui/StatusBadge";
-import { useApiQuery } from "../../hooks/useApi";
-import { api } from "../../lib/api";
+import { useApiQuery, useApiMutation, apiErrorMessage } from "../../hooks/useApi";
 import { formatINR } from "../../lib/format";
 import type { EnergyCreditDTO, GridZoneDTO } from "@wattshare/shared";
 
+/** A sellable credit carries the remainder the server will actually accept. */
+type SellableCreditDTO = EnergyCreditDTO & { listableKwh: string };
+
+interface ProsumerDashboardData {
+  platformFeeRate: string;
+}
+
+/** Only used if the dashboard call hasn't landed yet; the server value wins. */
+const FALLBACK_FEE_RATE = 0.05;
+
 export default function ProsumerSell() {
-  const { data: credits, refetch } = useApiQuery<EnergyCreditDTO[]>(["credits", "available"], "/credits?status=AVAILABLE");
+  const { data: credits } = useApiQuery<SellableCreditDTO[]>(
+    ["credits", "sellable"],
+    "/credits?sellable=true",
+  );
   const { data: zones } = useApiQuery<GridZoneDTO[]>(["grid", "zones"], "/grid/zones");
+  const { data: dashboard } = useApiQuery<ProsumerDashboardData>(["dashboard", "prosumer"], "/users/dashboard");
+
+  const feeRate = dashboard ? Number(dashboard.platformFeeRate) : FALLBACK_FEE_RATE;
 
   const [creditId, setCreditId] = useState("");
   const [quantityKwh, setQuantityKwh] = useState("");
   const [pricePerKwh, setPricePerKwh] = useState("4.25");
   const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+
+  const publish = useApiMutation<{ creditId: string; quantityKwh: number; pricePerKwh: number }>(
+    "post",
+    "/marketplace/listings",
+    // A new listing changes the credit's listable remainder AND the portfolio
+    // balances behind the dashboard tiles and the header pill, so refresh all three.
+    { invalidates: [["credits", "sellable"], ["dashboard", "prosumer"], ["marketplace", "listings"], ["listings", "mine"]] },
+  );
 
   const selectedCredit = (credits ?? []).find((c) => c.id === creditId);
   const selectedZone = zones?.find((z) => z.id === selectedCredit?.gridZoneId);
   const zoneName = selectedZone?.name;
-  const maxKwh = selectedCredit ? Number(selectedCredit.availableKwh) : 0;
+  // What the server will accept, not the raw balance — availableKwh still counts
+  // quantity already committed to open listings.
+  const maxKwh = selectedCredit ? Number(selectedCredit.listableKwh) : 0;
 
   const { gross, fee, net } = useMemo(() => {
     const qty = Number(quantityKwh) || 0;
     const price = Number(pricePerKwh) || 0;
     const g = qty * price;
-    const f = g * 0.05;
+    const f = g * feeRate;
     return { gross: g, fee: f, net: g - f };
-  }, [quantityKwh, pricePerKwh]);
+  }, [quantityKwh, pricePerKwh, feeRate]);
 
   async function submit() {
     setMessage(null);
-    setBusy(true);
     try {
-      await api.post("/marketplace/listings", {
+      await publish.mutateAsync({
         creditId,
         quantityKwh: Number(quantityKwh),
         pricePerKwh: Number(pricePerKwh),
       });
       setMessage("Listing broadcast to the P2P market.");
       setQuantityKwh("");
-      refetch();
-    } catch (err: any) {
-      setMessage(err?.response?.data?.message ?? "Failed to publish listing");
-    } finally {
-      setBusy(false);
+    } catch (err) {
+      setMessage(apiErrorMessage(err, "Failed to publish listing"));
     }
   }
 
@@ -73,7 +93,7 @@ export default function ProsumerSell() {
               <option value="">Select a verified credit batch</option>
               {(credits ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.creditId} — {c.availableKwh} kWh available
+                  {c.creditId} — {Number(c.listableKwh).toFixed(2)} kWh available to list
                 </option>
               ))}
             </select>
@@ -117,7 +137,9 @@ export default function ProsumerSell() {
               </button>
             </div>
             {selectedCredit && (
-              <p className="mt-1 font-mono text-[10px] uppercase text-on-surface-variant">Max available: {maxKwh} kWh</p>
+              <p className="mt-1 font-mono text-[10px] uppercase text-on-surface-variant">
+                Max available to list: {maxKwh.toFixed(2)} kWh
+              </p>
             )}
           </div>
 
@@ -147,7 +169,7 @@ export default function ProsumerSell() {
               <span>{formatINR(gross)}</span>
             </div>
             <div className="flex justify-between font-mono text-xs text-fault">
-              <span>Platform &amp; DISCOM fee (5%)</span>
+              <span>Platform &amp; DISCOM fee ({+(feeRate * 100).toFixed(2)}%)</span>
               <span>−{formatINR(fee)}</span>
             </div>
             <div className="mt-1 flex justify-between border-t-2 border-black pt-1 font-mono text-sm font-bold">
@@ -160,7 +182,7 @@ export default function ProsumerSell() {
 
           <Button
             variant="solar"
-            disabled={busy || !creditId || !quantityKwh || !pricePerKwh}
+            disabled={publish.isPending || !creditId || !quantityKwh || !pricePerKwh}
             onClick={submit}
           >
             Publish P2P listing

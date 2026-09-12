@@ -8,6 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import { Decimal } from "decimal.js";
 import crypto from "crypto";
 import { bellCurve, jitter, eligibleCreditKwh } from "./calculations";
+import { env } from "../config/env";
 
 const DEMO_PASSWORD = "demo1234";
 const CONSUMPTION_PROFILE_KW = [0.3, 0.3, 0.3, 0.3, 0.4, 0.5, 0.8, 1.2, 1.0, 0.8, 0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.9, 1.3, 1.8, 1.6, 1.2, 0.8, 0.5, 0.4];
@@ -254,7 +255,8 @@ export async function runSeed(prisma: PrismaClient) {
     const qty = new Decimal(20 + (i % 5) * 10);
     const price = new Decimal(4.0 + (i % 3) * 0.1);
     const total = qty.times(price);
-    const fee = total.times(0.1);
+    // Same rate the live engine charges, so seeded history matches real trades.
+    const fee = total.times(env.platformFeeRate);
     const payout = total.minus(fee);
     const createdAt = new Date(now.getTime() - (12 - i) * 3_600_000 * 4);
 

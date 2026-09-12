@@ -27,13 +27,26 @@ export async function createListing(user: AuthUser, input: CreateListingInput) {
       throw ApiError.badRequest("INSUFFICIENT_CREDITS", "Not enough available EC to list");
     }
 
+    // Reject at creation, not just at purchase. Without this the seller publishes
+    // happily and the failure surfaces to a buyer at reservation time instead.
+    if (credit.expiresAt.getTime() <= Date.now()) {
+      throw ApiError.badRequest("CREDIT_EXPIRED", "This credit batch has expired and can no longer be listed");
+    }
+
     const zone = credit.meter.gridZone;
     const price = new Decimal(input.pricePerKwh);
     if (price.lt(zone.priceFloor) || price.gt(zone.priceCeiling)) {
       throw ApiError.badRequest("PRICE_OUT_OF_BAND", `Price must be between ${zone.priceFloor} and ${zone.priceCeiling}`);
     }
 
-    await tx.energyCredit.update({ where: { id: credit.id }, data: { status: "LISTED" } });
+    // Mark LISTED only once the whole balance is spoken for. Flipping it on any
+    // partial listing removed the credit from the seller's own Sell page and
+    // stranded the unlisted remainder (the over-listing guard above already
+    // enforces the real limit).
+    const fullyListed = qty.plus(listedSoFar).gte(credit.availableKwh);
+    if (fullyListed) {
+      await tx.energyCredit.update({ where: { id: credit.id }, data: { status: "LISTED" } });
+    }
 
     const listing = await tx.marketplaceListing.create({
       data: {
@@ -64,23 +77,36 @@ export async function cancelListing(user: AuthUser, listingId: string) {
       throw ApiError.conflict("VALIDATION_ERROR", "Only active/partial listings can be cancelled");
     }
 
-    // Listing never held a balance in availableKwh (see createListing), so cancelling
-    // it just frees the credit back to AVAILABLE status — no balance to restore.
-    await tx.energyCredit.update({ where: { id: listing.creditId }, data: { status: "AVAILABLE" } });
-
     const cancelled = await tx.marketplaceListing.update({ where: { id: listingId }, data: { status: "CANCELLED" } });
+
+    // Listing never held a balance in availableKwh (see createListing), so there is
+    // no balance to restore — but the credit may still back OTHER open listings, so
+    // recompute rather than assuming this cancellation frees the whole thing.
+    const stillListed = await tx.marketplaceListing.aggregate({
+      where: { creditId: listing.creditId, status: { in: ["ACTIVE", "PARTIAL"] } },
+      _sum: { remainingKwh: true },
+    });
+    const credit = await tx.energyCredit.findUniqueOrThrow({ where: { id: listing.creditId } });
+    const outstanding = stillListed._sum.remainingKwh ?? new Decimal(0);
+    if (new Decimal(credit.availableKwh).gt(outstanding) && credit.status === "LISTED") {
+      await tx.energyCredit.update({ where: { id: listing.creditId }, data: { status: "AVAILABLE" } });
+    }
     await audit(tx, "LISTING_CANCELLED", "MarketplaceListing", listingId, user.id);
     return cancelled;
   });
 }
 
-export async function listListings(query: ListingsQuery) {
+export async function listListings(user: AuthUser, query: ListingsQuery) {
   const orderBy =
     query.sort === "price_desc" ? { pricePerKwh: "desc" as const } : query.sort === "newest" ? { createdAt: "desc" as const } : { pricePerKwh: "asc" as const };
 
   const listings = await prisma.marketplaceListing.findMany({
     where: {
-      status: { in: ["ACTIVE", "PARTIAL"] },
+      // Browsing the market shows only what can still be bought; a seller viewing
+      // their own book needs the finished ones too.
+      ...(query.mine
+        ? { sellerId: user.id }
+        : { status: { in: ["ACTIVE", "PARTIAL"] as const } }),
       ...(query.zone ? { zone: { zoneCode: query.zone } } : {}),
       ...(query.minPrice !== undefined ? { pricePerKwh: { gte: query.minPrice } } : {}),
       ...(query.maxPrice !== undefined ? { pricePerKwh: { lte: query.maxPrice } } : {}),
@@ -90,10 +116,13 @@ export async function listListings(query: ListingsQuery) {
     orderBy,
   });
 
-  // Never return seller PII — only displayAlias + zone name (§6)
+  // Never return seller PII — only displayAlias + zone name (§6). `isOwn` is a
+  // derived boolean rather than the raw sellerId, so the client can mark and
+  // disable the caller's own listings without learning anyone else's identity.
   return listings.map((l) => ({
     id: l.id,
     sellerAlias: l.seller.displayAlias,
+    isOwn: l.sellerId === user.id,
     creditId: l.creditId,
     gridZoneId: l.gridZoneId,
     zoneName: l.zone.name,

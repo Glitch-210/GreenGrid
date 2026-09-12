@@ -10,8 +10,9 @@
  * (see setup-env.ts).
  */
 import { prisma } from "../src/config/prisma";
-import { ingestReading } from "../src/modules/meters/meters.service";
-import { seedFixture, resetFixture, cleanup, type Fixture } from "./helpers/readings-fixture";
+import { ingestReading, ingestReadingUnchecked } from "../src/modules/meters/meters.service";
+import { seedFixture, resetFixture, cleanup, PREFIX, type Fixture } from "./helpers/readings-fixture";
+import { Role } from "@wattshare/shared";
 
 jest.setTimeout(30_000);
 
@@ -40,8 +41,8 @@ describe("duplicate-reading dedupe (§10, mandatory)", () => {
       consumptionKwh: 1,
     };
 
-    const first = await ingestReading(fx.meterId, input);
-    const second = await ingestReading(fx.meterId, { ...input, timestamp: new Date(Date.now() + 60_000) });
+    const first = await ingestReadingUnchecked(fx.meterId, input);
+    const second = await ingestReadingUnchecked(fx.meterId, { ...input, timestamp: new Date(Date.now() + 60_000) });
 
     expect(second.id).toBe(first.id);
 
@@ -59,8 +60,8 @@ describe("duplicate-reading dedupe (§10, mandatory)", () => {
 
     // Kick both off before awaiting so they genuinely overlap and race past the
     // leading findFirst dedupe check together.
-    const a = ingestReading(fx.meterId, input);
-    const b = ingestReading(fx.meterId, input);
+    const a = ingestReadingUnchecked(fx.meterId, input);
+    const b = ingestReadingUnchecked(fx.meterId, input);
     const results = await Promise.allSettled([a, b]);
 
     const fulfilled = results.filter((r) => r.status === "fulfilled") as PromiseFulfilledResult<{ id: string }>[];
@@ -74,5 +75,34 @@ describe("duplicate-reading dedupe (§10, mandatory)", () => {
 
     const rows = await prisma.meterReading.findMany({ where: { meterId: fx.meterId, externalId: input.externalId } });
     expect(rows).toHaveLength(1);
+  });
+
+  // Bug 4: POST /meters/:id/readings had no ownership check, so any authenticated
+  // user could inject readings into anyone's meter — and a reading with surplus
+  // mints real credits. Reported as 404 so the id's existence isn't confirmed.
+  it("refuses to ingest a reading into a meter the caller does not own", async () => {
+    const stranger = { id: "00000000-0000-0000-0000-0000000000ff", role: Role.PROSUMER, email: "stranger@test.invalid" };
+    const input = {
+      externalId: "DSTEST-ext-notmine",
+      timestamp: new Date(),
+      generationKwh: 5,
+      consumptionKwh: 1,
+    };
+
+    await expect(ingestReading(stranger, fx.meterId, input)).rejects.toMatchObject({ statusCode: 404 });
+
+    const rows = await prisma.meterReading.findMany({ where: { meterId: fx.meterId, externalId: input.externalId } });
+    expect(rows).toHaveLength(0);
+  });
+
+  it("lets the meter's own owner ingest", async () => {
+    const owner = { id: fx.ownerId, role: Role.PROSUMER, email: `${PREFIX}meter-owner@test.invalid` };
+    const reading = await ingestReading(owner, fx.meterId, {
+      externalId: "DSTEST-ext-mine",
+      timestamp: new Date(),
+      generationKwh: 5,
+      consumptionKwh: 1,
+    });
+    expect(reading.meterId).toBe(fx.meterId);
   });
 });

@@ -57,6 +57,9 @@ export default function ProsumerDashboard() {
             Sell surplus energy credits{data ? ` (${formatEC(data.creditBalance.available)})` : ""}
           </Button>
         </Link>
+        <Link to="/prosumer/listings">
+          <Button variant="grid">My listings</Button>
+        </Link>
         <Link to="/prosumer/credits">
           <Button variant="neutral">View credit batches</Button>
         </Link>

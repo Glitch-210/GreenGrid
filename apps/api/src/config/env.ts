@@ -16,7 +16,10 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
   corsOrigin: (process.env.CORS_ORIGIN ?? "http://localhost:5173").split(","),
 
-  platformFeeRate: Number(process.env.PLATFORM_FEE_RATE ?? 0.1),
+  // Single source of truth for the platform + DISCOM cut. The Sell page reads this
+  // back via /users/dashboard rather than hardcoding a percentage — the two drifted
+  // apart once already (UI said 5%, server charged 10%).
+  platformFeeRate: Number(process.env.PLATFORM_FEE_RATE ?? 0.05),
   creditValidityHours: Number(process.env.CREDIT_VALIDITY_HOURS ?? 72),
   reservationTtlMinutes: Number(process.env.RESERVATION_TTL_MINUTES ?? 5),
   simSpeedMultiplier: Number(process.env.SIM_SPEED_MULTIPLIER ?? 60),

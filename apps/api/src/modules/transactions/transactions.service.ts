@@ -3,6 +3,8 @@ import { Decimal } from "../../lib/decimal";
 import { ApiError } from "../../lib/ApiError";
 import { isTransientTransactionError } from "../../lib/prisma-errors";
 import { audit } from "../../lib/audit";
+import { assertCanReadAny } from "../../lib/authorize";
+import { notifyEach } from "../../lib/notify";
 import { nextTransactionId } from "../../lib/ids";
 import { env } from "../../config/env";
 import * as gridService from "../grid/grid.service";
@@ -89,6 +91,12 @@ export async function createTransaction(buyer: AuthUser, input: CreateTransactio
         if (!["ACTIVE", "PARTIAL"].includes(lState.status)) {
           throw ApiError.conflict("INSUFFICIENT_CREDITS", "Listing no longer available");
         }
+        // Buying your own listing is a round trip that moves no energy and costs the
+        // seller the platform fee for the privilege. Checked per allocation, so it
+        // also catches a basket that mixes someone else's listing with your own.
+        if (listing.sellerId === buyer.id) {
+          throw ApiError.badRequest("SELF_TRADE", "You cannot buy your own listing");
+        }
         const kwh = new Decimal(alloc.kwh);
         if (kwh.gt(lState.remainingKwh) || kwh.gt(cState.availableKwh)) {
           throw ApiError.conflict("INSUFFICIENT_CREDITS", "Not enough energy credits remaining");
@@ -123,7 +131,9 @@ export async function createTransaction(buyer: AuthUser, input: CreateTransactio
       for (const [creditId, cState] of creditState) {
         await tx.energyCredit.update({
           where: { id: creditId },
-          data: { availableKwh: cState.availableKwh, reservedKwh: cState.reservedKwh.toNumber(), status: cState.status },
+          // Both as Decimal. `.toNumber()` here rounded a Decimal(18,4) balance
+          // through float64 and broke the available+reserved+sold+retired invariant.
+          data: { availableKwh: cState.availableKwh, reservedKwh: cState.reservedKwh, status: cState.status },
         });
       }
       for (const [listingId, lState] of listingState) {
@@ -196,6 +206,28 @@ export async function createTransaction(buyer: AuthUser, input: CreateTransactio
   if (!txn) throw ApiError.conflict("TRANSACTION_TIMEOUT", "Purchase timed out — please try again");
 
   emitToUser(buyer.id, SOCKET_EVENTS.TRADE_MATCHED, { transactionId: txn.transactionId, status: txn.status });
+
+  // The sellers are the other half of this trade and were previously told nothing.
+  // Derived from the match rows because txn.sellerId is null on a multi-seller basket.
+  const sellers = await prisma.energyMatch.findMany({
+    where: { transactionId: txn.id },
+    select: { sellerId: true, quantityKwh: true },
+  });
+  for (const sellerId of new Set(sellers.map((s) => s.sellerId))) {
+    emitToUser(sellerId, SOCKET_EVENTS.TRADE_MATCHED, { transactionId: txn.transactionId, status: txn.status });
+  }
+  const soldBySeller = new Map<string, Decimal>();
+  for (const s of sellers) {
+    soldBySeller.set(s.sellerId, (soldBySeller.get(s.sellerId) ?? new Decimal(0)).plus(s.quantityKwh));
+  }
+  await notifyEach(
+    [...soldBySeller.keys()],
+    "TRADE_MATCHED",
+    "Your credits are reserved",
+    (id) => `A buyer reserved ${soldBySeller.get(id)!.toFixed(2)} EC from your listing. Awaiting payment.`,
+    { transactionId: txn.transactionId },
+  );
+
   scheduleReservationExpiry(txn.id);
   return txn;
 }
@@ -233,11 +265,19 @@ export async function releaseReservation(transactionId: string, toStatus: "CANCE
 
       await tx.energyCredit.update({
         where: { id: credit.id },
-        data: { availableKwh: { increment: match.quantityKwh.toNumber() }, reservedKwh: { decrement: match.quantityKwh.toNumber() }, status: "AVAILABLE" },
+        data: { availableKwh: { increment: match.quantityKwh }, reservedKwh: { decrement: match.quantityKwh }, status: "AVAILABLE" },
       });
+
+      // Recompute the listing's status from the restored quantity rather than
+      // carrying the old one forward: a PARTIAL listing that is now whole again
+      // stayed PARTIAL forever, mislabelling an untouched listing as part-sold.
+      const restoredRemaining = new Decimal(listing.remainingKwh).plus(match.quantityKwh);
       await tx.marketplaceListing.update({
         where: { id: listing.id },
-        data: { remainingKwh: { increment: match.quantityKwh.toNumber() }, status: listing.status === "RESERVED" ? "ACTIVE" : "PARTIAL" },
+        data: {
+          remainingKwh: restoredRemaining,
+          status: restoredRemaining.gte(listing.quantityKwh) ? "ACTIVE" : "PARTIAL",
+        },
       });
       await tx.energyMatch.update({ where: { id: match.id }, data: { status: "CANCELLED" } });
     }
@@ -258,9 +298,12 @@ export async function cancelTransaction(user: AuthUser, transactionId: string) {
   return releaseReservation(transactionId, "CANCELLED");
 }
 
-export async function getTransaction(id: string) {
+export async function getTransaction(user: AuthUser, id: string) {
   const txn = await prisma.transaction.findUnique({ where: { id }, include: { matches: true, payment: true, settlement: true } });
   if (!txn) throw ApiError.notFound("Transaction not found");
+  // Buyer, any seller on the basket, or oversight. `txn.sellerId` alone is not
+  // enough — it is null for multi-seller baskets, so check the matches too.
+  assertCanReadAny(user, [txn.buyerId, txn.sellerId, ...txn.matches.map((m) => m.sellerId)], "Transaction");
   return txn;
 }
 
@@ -277,7 +320,16 @@ export async function listTransactions(user: AuthUser) {
     });
   }
   return prisma.transaction.findMany({
-    where: { OR: [{ buyerId: user.id }, { sellerId: user.id }] },
+    where: {
+      OR: [
+        { buyerId: user.id },
+        { sellerId: user.id },
+        // sellerId is null on multi-seller baskets, so a seller's own sale would
+        // otherwise be missing from their history entirely. The match rows carry
+        // the real per-listing seller.
+        { matches: { some: { sellerId: user.id } } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     include: {
       buyer: { select: { name: true, displayAlias: true, email: true } },
@@ -287,3 +339,4 @@ export async function listTransactions(user: AuthUser) {
     },
   });
 }
+

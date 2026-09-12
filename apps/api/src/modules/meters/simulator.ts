@@ -3,7 +3,7 @@ import { bellCurve, jitter } from "../../lib/calculations";
 import { Decimal } from "../../lib/decimal";
 import { logger } from "../../lib/logger";
 import { advanceSimulatedClock } from "./simulated-clock";
-import { ingestReading } from "./meters.service";
+import { ingestReadingUnchecked } from "./meters.service";
 import { mintFromReading } from "../credits/credit-engine.service";
 import { emitToZone } from "../../sockets/io";
 import { SOCKET_EVENTS } from "../../sockets/events";
@@ -35,7 +35,7 @@ export async function runSimulatorTick() {
     const externalId = `SIM-${meter.id}-${simulatedTime.getTime()}`;
 
     try {
-      const reading = await ingestReading(meter.id, {
+      const reading = await ingestReadingUnchecked(meter.id, {
         externalId,
         timestamp: simulatedTime,
         generationKwh: gen.toNumber(),

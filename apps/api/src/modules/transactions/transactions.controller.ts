@@ -21,7 +21,7 @@ export async function listTransactionsHandler(req: Request, res: Response, next:
 
 export async function getTransactionHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    ok(res, await transactionsService.getTransaction(req.params.id));
+    ok(res, await transactionsService.getTransaction(req.user!, req.params.id));
   } catch (err) {
     next(err);
   }

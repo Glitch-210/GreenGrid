@@ -14,7 +14,7 @@ export async function createMeterHandler(req: Request, res: Response, next: Next
 export async function listReadingsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { page, pageSize } = req.query as unknown as { page: number; pageSize: number };
-    const result = await metersService.listReadings(req.params.id, page, pageSize);
+    const result = await metersService.listReadings(req.user!, req.params.id, page, pageSize);
     ok(res, result.items, { total: result.total, page: result.page, pageSize: result.pageSize });
   } catch (err) {
     next(err);
@@ -23,7 +23,7 @@ export async function listReadingsHandler(req: Request, res: Response, next: Nex
 
 export async function ingestReadingHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const reading = await metersService.ingestReading(req.params.id, req.body);
+    const reading = await metersService.ingestReading(req.user!, req.params.id, req.body);
     ok(res, reading, undefined, 201);
   } catch (err) {
     next(err);

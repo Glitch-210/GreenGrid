@@ -101,11 +101,14 @@ export interface EnergyCreditDTO {
 
 export interface MarketplaceListingDTO {
   id: string;
-  sellerId: string;
+  /** No `sellerId` by design — seller identity is never returned (§6). */
   sellerAlias: string;
+  /** True when the listing belongs to the caller; the client must not offer to buy it. */
+  isOwn: boolean;
   creditId: string;
   gridZoneId: string;
   zoneName: string;
+  zoneCode: string;
   quantityKwh: string;
   remainingKwh: string;
   pricePerKwh: string;

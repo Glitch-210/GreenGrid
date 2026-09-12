@@ -10,10 +10,11 @@
  */
 import { prisma } from "../src/config/prisma";
 import { Decimal } from "../src/lib/decimal";
-import { createTransaction } from "../src/modules/transactions/transactions.service";
+import { createTransaction, cancelTransaction } from "../src/modules/transactions/transactions.service";
 import { ApiError } from "../src/lib/ApiError";
 import { seedFixture, resetFixture, cleanup, type Fixture } from "./helpers/double-spend-fixture";
 import type { AuthUser } from "../src/middleware/auth.middleware";
+import { Role } from "@wattshare/shared";
 
 jest.setTimeout(30_000);
 
@@ -132,5 +133,63 @@ describe("double-spend race (§10, mandatory)", () => {
 
     const rows = await prisma.transaction.findMany({ where: { idempotencyKey: key } });
     expect(rows).toHaveLength(1);
+  });
+});
+
+/**
+ * Bug 10: createTransaction never compared the listing's seller to the buyer, so a
+ * prosumer could buy their own credits — moving no energy and paying the platform
+ * fee for the privilege. The marketplace projection also omits sellerId, so the
+ * client could not have filtered these out on its own.
+ */
+describe("self-trade guard (Bug 10)", () => {
+  const asSeller = (): AuthUser => ({ id: fx.sellerId, role: Role.PROSUMER, email: "seller@test.invalid" });
+
+  it("refuses a seller buying their own listing", async () => {
+    await expect(buy(asSeller(), 10, "DSTEST-selftrade-1")).rejects.toMatchObject({ errorCode: "SELF_TRADE" });
+  });
+
+  it("refuses a basket that mixes someone else's listing with the buyer's own", async () => {
+    await expect(
+      createTransaction(
+        asSeller(),
+        { allocations: [{ listingId: fx.listingId, kwh: 5 }, { listingId: fx.listingId, kwh: 5 }] },
+        "DSTEST-selftrade-2",
+      ),
+    ).rejects.toMatchObject({ errorCode: "SELF_TRADE" });
+  });
+
+  it("still lets a genuine third-party buyer through", async () => {
+    const txn = await buy(buyer1, 10, "DSTEST-selftrade-ok");
+    expect(txn.status).toBe("RESERVED");
+  });
+});
+
+/**
+ * Bug 11: reservedKwh was written via `.toNumber()`, rounding a Decimal(18,4) balance
+ * through float64 and breaking `available + reserved + sold + retired == quantity`.
+ * Bug 31: a listing restored to its full quantity stayed PARTIAL.
+ */
+describe("decimal precision and listing restoration (Bugs 11, 31)", () => {
+  it("keeps the credit balance invariant exact across reserve and release", async () => {
+    // A quantity with a fractional part that float64 cannot hold exactly.
+    const txn = await buy(buyer1, 33.3333, "DSTEST-decimal-1");
+
+    const mid = await prisma.energyCredit.findUniqueOrThrow({ where: { id: fx.creditId } });
+    const midSum = new Decimal(mid.availableKwh).plus(mid.reservedKwh).plus(mid.soldKwh).plus(mid.retiredKwh);
+    expect(midSum.equals(new Decimal(mid.quantityKwh))).toBe(true);
+    expect(new Decimal(mid.reservedKwh).equals(new Decimal("33.3333"))).toBe(true);
+
+    await cancelTransaction(buyer1, txn.id);
+
+    const after = await prisma.energyCredit.findUniqueOrThrow({ where: { id: fx.creditId } });
+    const afterSum = new Decimal(after.availableKwh).plus(after.reservedKwh).plus(after.soldKwh).plus(after.retiredKwh);
+    expect(afterSum.equals(new Decimal(after.quantityKwh))).toBe(true);
+    expect(new Decimal(after.reservedKwh).isZero()).toBe(true);
+
+    const listing = await prisma.marketplaceListing.findUniqueOrThrow({ where: { id: fx.listingId } });
+    expect(new Decimal(listing.remainingKwh).equals(new Decimal(listing.quantityKwh))).toBe(true);
+    // Bug 31: fully restored, so ACTIVE — not carried forward as PARTIAL.
+    expect(listing.status).toBe("ACTIVE");
   });
 });

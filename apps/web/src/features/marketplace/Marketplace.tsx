@@ -3,8 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { StatusBadge } from "../../components/ui/StatusBadge";
-import { useApiQuery } from "../../hooks/useApi";
-import { api } from "../../lib/api";
+import { useApiQuery, useApiMutation, apiErrorMessage } from "../../hooks/useApi";
 import { formatINR } from "../../lib/format";
 import type { MarketplaceListingDTO } from "@wattshare/shared";
 
@@ -12,13 +11,25 @@ type SortMode = "price_asc" | "price_desc" | "newest";
 
 export default function Marketplace() {
   const navigate = useNavigate();
-  const { data, refetch } = useApiQuery<MarketplaceListingDTO[]>(["marketplace", "listings"], "/marketplace/listings");
+  const { data } = useApiQuery<MarketplaceListingDTO[]>(["marketplace", "listings"], "/marketplace/listings");
 
   const [search, setSearch] = useState("");
   const [minQty, setMinQty] = useState(0);
   const [sort, setSort] = useState<SortMode>("price_asc");
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // A purchase moves the listing's remaining quantity and both parties' balances.
+  const invalidates = [["marketplace", "listings"], ["dashboard", "prosumer"], ["transactions", "mine"], ["credits", "sellable"]];
+  const reserve = useApiMutation<{ allocations: { listingId: string; kwh: number }[] }, { id: string }>(
+    "post",
+    "/transactions",
+    { invalidates, headers: () => ({ "Idempotency-Key": crypto.randomUUID() }) },
+  );
+  const pay = useApiMutation<{ transactionId: string }>("post", "/payments", {
+    invalidates,
+    headers: () => ({ "Idempotency-Key": crypto.randomUUID() }),
+  });
 
   const listings = useMemo(() => {
     let rows = (data ?? []).filter((l) => Number(l.remainingKwh) >= minQty);
@@ -38,21 +49,15 @@ export default function Marketplace() {
     setError(null);
     setBuyingId(listing.id);
     try {
-      const txRes = await api.post(
-        "/transactions",
-        { allocations: [{ listingId: listing.id, kwh: Number(listing.remainingKwh) }] },
-        { headers: { "Idempotency-Key": crypto.randomUUID() } },
-      );
-      const transactionId = txRes.data.data.id;
-      await api.post(
-        "/payments",
-        { transactionId },
-        { headers: { "Idempotency-Key": crypto.randomUUID() } },
-      );
-      navigate(`/transactions/${transactionId}`);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? "Failed to buy credits");
-      refetch();
+      // Two writes, so they're driven imperatively rather than as one mutation —
+      // but both go through the hook so the cache invalidation still happens.
+      const txn = await reserve.mutateAsync({
+        allocations: [{ listingId: listing.id, kwh: Number(listing.remainingKwh) }],
+      });
+      await pay.mutateAsync({ transactionId: txn.id });
+      navigate(`/transactions/${txn.id}`);
+    } catch (err) {
+      setError(apiErrorMessage(err, "Failed to buy credits"));
     } finally {
       setBuyingId(null);
     }
@@ -105,7 +110,7 @@ export default function Marketplace() {
           <Card key={l.id} className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <p className="font-display text-lg font-bold">{l.sellerAlias}</p>
-              <StatusBadge status="live">Verified</StatusBadge>
+              <StatusBadge status={l.isOwn ? "idle" : "live"}>{l.isOwn ? "Your listing" : "Verified"}</StatusBadge>
             </div>
             <p className="font-mono text-xs uppercase text-on-surface-variant">{l.zoneName}</p>
             <div className="flex items-baseline justify-between border-t-2 border-black pt-2">
@@ -120,13 +125,15 @@ export default function Marketplace() {
               <span className="font-mono text-xs uppercase text-on-surface-variant">Total</span>
               <span className="font-mono font-bold">{formatINR(Number(l.remainingKwh) * Number(l.pricePerKwh))}</span>
             </div>
+            {/* Own listings stay visible (useful feedback that it's on the market)
+                but can't be bought — the server rejects it with SELF_TRADE anyway. */}
             <Button
-              variant="solar"
+              variant={l.isOwn ? "neutral" : "solar"}
               className="mt-2"
-              disabled={buyingId === l.id}
+              disabled={l.isOwn || buyingId === l.id}
               onClick={() => buy(l)}
             >
-              {buyingId === l.id ? "Processing…" : "Buy credits"}
+              {l.isOwn ? "Your own listing" : buyingId === l.id ? "Processing…" : "Buy credits"}
             </Button>
           </Card>
         ))}

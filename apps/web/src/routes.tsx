@@ -7,6 +7,8 @@ import RegisterPage from "./features/auth/RegisterPage";
 import ProsumerDashboard from "./features/prosumer/ProsumerDashboard";
 import ProsumerCredits from "./features/prosumer/ProsumerCredits";
 import ProsumerSell from "./features/prosumer/ProsumerSell";
+import ProsumerListings from "./features/prosumer/ProsumerListings";
+import ProsumerTransactions from "./features/prosumer/ProsumerTransactions";
 import ConsumerDashboard from "./features/consumer/ConsumerDashboard";
 import ConsumerCheckout from "./features/consumer/ConsumerCheckout";
 import ConsumerTransactions from "./features/consumer/ConsumerTransactions";
@@ -38,6 +40,8 @@ export function AppRoutes() {
         <Route path="/prosumer" element={<ProsumerDashboard />} />
         <Route path="/prosumer/credits" element={<ProsumerCredits />} />
         <Route path="/prosumer/sell" element={<ProsumerSell />} />
+        <Route path="/prosumer/listings" element={<ProsumerListings />} />
+        <Route path="/prosumer/transactions" element={<ProsumerTransactions />} />
 
         <Route path="/consumer" element={<ConsumerDashboard />} />
         <Route path="/consumer/checkout" element={<ConsumerCheckout />} />

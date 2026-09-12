@@ -1,10 +1,11 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Role } from "@wattshare/shared";
-import type { NotificationDTO } from "@wattshare/shared";
 import { useAuth } from "../../hooks/useAuth";
 import { useApiQuery } from "../../hooks/useApi";
 import { formatEC, formatINR } from "../../lib/format";
 import { Logo } from "./Logo";
+import { NotificationMenu } from "./NotificationMenu";
+import { useSocketInvalidate } from "../../hooks/useSocket";
 
 interface ProsumerDashboardData {
   creditBalance: { available: string; reserved: string; sold: string; retired: string };
@@ -28,7 +29,10 @@ function navItemsForRole(role: Role): NavItem[] {
         home,
         { key: "marketplace", label: "Market", icon: "▲", to: "/marketplace" },
         { key: "sell-credits", label: "Sell", icon: "⚡", to: "/prosumer/sell" },
-        { key: "transactions", label: "Txns", icon: "▤", to: "/prosumer/credits" },
+        { key: "my-listings", label: "Listings", icon: "◱", to: "/prosumer/listings" },
+        // "Txns" used to point at /prosumer/credits, which lists credit batches, not
+        // transactions. Credits are reachable from the dashboard instead.
+        { key: "transactions", label: "Sales", icon: "▤", to: "/prosumer/transactions" },
         profile,
       ];
     case Role.CONSUMER:
@@ -71,8 +75,11 @@ export function AppShell() {
     "/users/dashboard",
     role === Role.PROSUMER,
   );
-  const { data: notifications } = useApiQuery<NotificationDTO[]>(["notifications"], "/notifications");
-  const unread = (notifications ?? []).filter((n) => !n.isRead).length;
+  // Seller-side lifecycle events now reach this client, so the header EC/₹ pill
+  // refreshes as trades land instead of only on navigation.
+  useSocketInvalidate("trade:matched", ["dashboard", "prosumer"], ["transactions", "mine"]);
+  useSocketInvalidate("payment:updated", ["dashboard", "prosumer"], ["transactions", "mine"]);
+  useSocketInvalidate("credit:minted", ["dashboard", "prosumer"], ["credits", "sellable"], ["credits", "mine"]);
 
   const items = navItemsForRole(role);
 
@@ -95,15 +102,7 @@ export function AppShell() {
             </div>
           )}
 
-          <button
-            className="relative border-3 border-black bg-white p-1.5 shadow-hard-sm"
-            aria-label="Notifications"
-          >
-            <span aria-hidden>🔔</span>
-            {unread > 0 && (
-              <span className="absolute -right-1 -top-1 h-3 w-3 border-2 border-black bg-fault" />
-            )}
-          </button>
+          <NotificationMenu />
 
           <Link to="/profile" className="block h-8 w-8 overflow-hidden border-3 border-black shadow-hard-sm">
             <img src="/avatar-placeholder.png" alt="Profile" className="h-full w-full object-cover" />
