@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
+import { useApiQuery } from "../../hooks/useApi";
 import { api } from "../../lib/api";
-import type { MatchPreviewDTO } from "@wattshare/shared";
+import type { GridZoneDTO, MatchPreviewDTO } from "@wattshare/shared";
 
 export default function ConsumerCheckout() {
+  const { data: zones } = useApiQuery<GridZoneDTO[]>(["grid", "zones"], "/grid/zones");
   const [quantityKwh, setQuantityKwh] = useState("500");
   const [gridZoneId, setGridZoneId] = useState("");
   const [preview, setPreview] = useState<MatchPreviewDTO | null>(null);
@@ -31,7 +33,13 @@ export default function ConsumerCheckout() {
         { allocations: preview.allocations.map((a) => ({ listingId: a.listingId, kwh: Number(a.kwh) })) },
         { headers: { "Idempotency-Key": crypto.randomUUID() } },
       );
-      navigate(`/transactions/${res.data.data.id}`);
+      const transactionId = res.data.data.id;
+      await api.post(
+        "/payments",
+        { transactionId },
+        { headers: { "Idempotency-Key": crypto.randomUUID() } },
+      );
+      navigate(`/transactions/${transactionId}`);
     } catch (err: any) {
       if (err?.response?.data?.errorCode === "GRID_CONGESTED") {
         setError(`Grid congested — only ${err.response.data.message}`);
@@ -55,13 +63,19 @@ export default function ConsumerCheckout() {
             value={quantityKwh}
             onChange={(e) => setQuantityKwh(e.target.value)}
           />
-          <input
+          <select
             className="flex-1 border-3 border-black bg-white px-3 py-2 font-mono text-sm"
-            placeholder="grid zone id"
             value={gridZoneId}
             onChange={(e) => setGridZoneId(e.target.value)}
-          />
-          <Button variant="grid" onClick={findMatches}>
+          >
+            <option value="">Select grid zone</option>
+            {(zones ?? []).map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.name}
+              </option>
+            ))}
+          </select>
+          <Button variant="grid" disabled={!gridZoneId} onClick={findMatches}>
             Find matches
           </Button>
         </div>

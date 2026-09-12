@@ -18,7 +18,8 @@ export default function ProsumerSell() {
   const [busy, setBusy] = useState(false);
 
   const selectedCredit = (credits ?? []).find((c) => c.id === creditId);
-  const zoneName = zones?.find((z) => z.id === selectedCredit?.gridZoneId)?.name;
+  const selectedZone = zones?.find((z) => z.id === selectedCredit?.gridZoneId);
+  const zoneName = selectedZone?.name;
   const maxKwh = selectedCredit ? Number(selectedCredit.availableKwh) : 0;
 
   const { gross, fee, net } = useMemo(() => {
@@ -132,6 +133,11 @@ export default function ProsumerSell() {
               value={pricePerKwh}
               onChange={(e) => setPricePerKwh(e.target.value)}
             />
+            {selectedZone && (
+              <p className="mt-1 font-mono text-[10px] uppercase text-on-surface-variant">
+                Allowed range: ₹{selectedZone.priceFloor}–₹{selectedZone.priceCeiling}/kWh in {zoneName}
+              </p>
+            )}
           </div>
 
           <div className="border-3 border-black bg-surface-container-low p-3">
@@ -150,7 +156,7 @@ export default function ProsumerSell() {
             </div>
           </div>
 
-          {message && <p className="font-mono text-sm">{message}</p>}
+          <div className="min-h-[1.5rem]">{message && <p className="font-mono text-sm">{message}</p>}</div>
 
           <Button
             variant="solar"

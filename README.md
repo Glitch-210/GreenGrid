@@ -51,8 +51,10 @@ npm run dev
 
 ## Definition of done
 
-- [ ] `npm i && npm run dev` boots API + web from a clean clone
-- [ ] `npx prisma migrate deploy && npm run db:seed` produces the seeded demo world
-- [ ] Double-spend integration test passes
-- [ ] Every credit satisfies the balance invariant above
-- [ ] No settled credit exceeds its purchased quantity; no credit retired before `SETTLED`
+- [x] `npm i && npm run dev` boots API + web from a clean clone
+- [x] `npx prisma migrate deploy && npm run db:seed` produces the seeded demo world
+- [x] Double-spend integration test passes
+- [x] Every credit satisfies the balance invariant above
+- [x] No settled credit exceeds its purchased quantity; no credit retired before `SETTLED`
+- [ ] End-to-end demo-script rehearsal (§12) walked through manually in a browser
+- [ ] Backup demo video recorded, in case the live demo fails

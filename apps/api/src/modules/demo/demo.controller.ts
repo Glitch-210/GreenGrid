@@ -10,6 +10,14 @@ export async function resetHandler(_req: Request, res: Response, next: NextFunct
   }
 }
 
+export function resetStatusHandler(_req: Request, res: Response, next: NextFunction) {
+  try {
+    ok(res, demoService.getResetStatus());
+  } catch (err) {
+    next(err);
+  }
+}
+
 export function clockHandler(req: Request, res: Response, next: NextFunction) {
   try {
     ok(res, demoService.setClockHour(req.body.hour));

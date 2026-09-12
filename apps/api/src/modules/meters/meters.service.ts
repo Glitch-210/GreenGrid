@@ -3,6 +3,8 @@ import { prisma } from "../../config/prisma";
 import { Decimal } from "../../lib/decimal";
 import { ApiError } from "../../lib/ApiError";
 import { CLOCK_SKEW_MINUTES, GENERATION_RATED_MULTIPLIER, GENERATION_MEDIAN_MULTIPLIER, TRAILING_READING_WINDOW } from "../../config/constants";
+import { isUniqueConstraintOn } from "../../lib/prisma-errors";
+import { getSimulatedTime } from "./simulated-clock";
 import type { CreateMeterInput, IngestReadingInput } from "@wattshare/shared";
 import type { AuthUser } from "../../middleware/auth.middleware";
 
@@ -56,8 +58,12 @@ export async function ingestReading(meterId: string, input: IngestReadingInput) 
     throw ApiError.badRequest("METER_NOT_ACTIVE", "Meter is not active");
   }
 
-  const now = new Date();
-  if (input.timestamp.getTime() > now.getTime() + CLOCK_SKEW_MINUTES * 60_000) {
+  // Compared against the app's simulated clock, not real wall-clock time — the whole
+  // demo (grid state, pricing) runs on simulated "now", which can run far ahead of/behind
+  // real time (see simulated-clock.ts), so checking against real `Date.now()` would
+  // permanently reject every simulator-originated reading after a "jump to hour".
+  const simulatedNow = getSimulatedTime();
+  if (input.timestamp.getTime() > simulatedNow.getTime() + CLOCK_SKEW_MINUTES * 60_000) {
     throw ApiError.badRequest("VALIDATION_ERROR", "Reading timestamp is too far in the future");
   }
 
@@ -91,19 +97,32 @@ export async function ingestReading(meterId: string, input: IngestReadingInput) 
   const importKwh = Decimal.max(0, consumptionKwh.minus(generationKwh));
   const exportKwh = surplusKwh;
 
-  return prisma.meterReading.create({
-    data: {
-      meterId,
-      externalId: input.externalId,
-      timestamp: input.timestamp,
-      generationKwh,
-      consumptionKwh,
-      importKwh,
-      exportKwh,
-      surplusKwh,
-      status,
-      flagReason,
-      payloadHash: hash,
-    },
-  });
+  try {
+    return await prisma.meterReading.create({
+      data: {
+        meterId,
+        externalId: input.externalId,
+        timestamp: input.timestamp,
+        generationKwh,
+        consumptionKwh,
+        importKwh,
+        exportKwh,
+        surplusKwh,
+        status,
+        flagReason,
+        payloadHash: hash,
+      },
+    });
+  } catch (err) {
+    // A concurrent replay can race past the findFirst dedupe check above; the
+    // loser hits the (meterId, externalId)/(meterId, timestamp) unique
+    // constraint instead of a clean idempotent no-op.
+    if (isUniqueConstraintOn(err, "externalId") || isUniqueConstraintOn(err, "timestamp")) {
+      const raced = await prisma.meterReading.findFirst({
+        where: { meterId, OR: [{ externalId: input.externalId }, { payloadHash: hash }] },
+      });
+      if (raced) return raced;
+    }
+    throw err;
+  }
 }

@@ -1,15 +1,32 @@
-import { execSync } from "child_process";
+import { runSeed } from "../../lib/seed-runner";
 import { prisma } from "../../config/prisma";
 import { Decimal } from "../../lib/decimal";
 import { ApiError } from "../../lib/ApiError";
+import { logger } from "../../lib/logger";
 import { runtime } from "../../config/runtime";
 import { jumpToHour } from "../meters/simulated-clock";
 
 /** §6 / §12 — the on-stage demo control panel. */
 
+let resetInProgress = false;
+let lastResetAt: Date | null = null;
+
 export async function reset() {
-  execSync("npx tsx prisma/seed.ts", { cwd: process.cwd(), stdio: "inherit" });
-  return { reset: true };
+  if (resetInProgress) {
+    return { reset: false, status: "already_in_progress" as const };
+  }
+  resetInProgress = true;
+  runSeed(prisma)
+    .catch((err) => logger.error("Demo reset seed failed", { err: String(err) }))
+    .finally(() => {
+      resetInProgress = false;
+      lastResetAt = new Date();
+    });
+  return { reset: true, status: "started" as const };
+}
+
+export function getResetStatus() {
+  return { inProgress: resetInProgress, lastResetAt: lastResetAt ? lastResetAt.toISOString() : null };
 }
 
 export function setClockHour(hour: number) {

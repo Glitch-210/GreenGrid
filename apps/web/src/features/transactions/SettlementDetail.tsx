@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { TxHash } from "../../components/ui/TxHash";
 import { useApiQuery } from "../../hooks/useApi";
 import { useAuth } from "../../hooks/useAuth";
 import { useSocketInvalidate } from "../../hooks/useSocket";
@@ -85,8 +86,8 @@ export default function SettlementDetail() {
               </div>
             </div>
             {data.blockchainTxHash && (
-              <p className="mt-3 border-t-2 border-black pt-2 font-mono text-xs text-on-surface-variant">
-                Metrology proof: {data.blockchainTxHash}
+              <p className="mt-3 flex flex-wrap items-center gap-2 border-t-2 border-black pt-2 font-mono text-xs text-on-surface-variant">
+                Metrology proof: <TxHash hash={data.blockchainTxHash} />
               </p>
             )}
           </Card>

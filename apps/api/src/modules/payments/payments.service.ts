@@ -4,9 +4,11 @@ import { ApiError } from "../../lib/ApiError";
 import { audit } from "../../lib/audit";
 import { assertTransition } from "../transactions/state-machine";
 import { enqueueChainOp } from "../../adapters/chain/queue";
-import { pseudoAddress } from "../../adapters/chain/chain.service";
+import { pseudoAddress, type CreditOrigin } from "../../adapters/chain/chain.service";
+import { logger } from "../../lib/logger";
 import { emitToUser } from "../../sockets/io";
 import { SOCKET_EVENTS } from "../../sockets/events";
+import { isUniqueConstraintOn } from "../../lib/prisma-errors";
 import type { CreatePaymentInput } from "@wattshare/shared";
 
 function paymentReference() {
@@ -23,20 +25,37 @@ export async function createPayment(input: CreatePaymentInput, idempotencyKey: s
   if (existingPayment) return existingPayment;
 
   const txn = await prisma.transaction.findUniqueOrThrow({ where: { id: input.transactionId }, include: { matches: true } });
-  assertTransition(txn.status, "PAYMENT_PENDING");
-  await prisma.transaction.update({ where: { id: txn.id }, data: { status: "PAYMENT_PENDING" } });
+  // A concurrent replay can land here after another in-flight call already moved
+  // the transaction to PAYMENT_PENDING — that's the same request racing itself,
+  // not an illegal transition, so leave the state machine alone and let the
+  // Payment.transactionId unique constraint (below) settle who wins.
+  if (txn.status !== "PAYMENT_PENDING") {
+    assertTransition(txn.status, "PAYMENT_PENDING");
+    await prisma.transaction.update({ where: { id: txn.id }, data: { status: "PAYMENT_PENDING" } });
+  }
 
   await delay(1200);
 
   const failed = input.simulateFailure === true;
-  const payment = await prisma.payment.create({
-    data: {
-      transactionId: txn.id,
-      amount: txn.totalAmount,
-      paymentReference: `${paymentReference()}-${idempotencyKey.slice(0, 8)}`,
-      status: failed ? "FAILED" : "SUCCESS",
-    },
-  });
+  let payment;
+  try {
+    payment = await prisma.payment.create({
+      data: {
+        transactionId: txn.id,
+        amount: txn.totalAmount,
+        paymentReference: `${paymentReference()}-${idempotencyKey.slice(0, 8)}`,
+        status: failed ? "FAILED" : "SUCCESS",
+      },
+    });
+  } catch (err) {
+    // A concurrent replay can race past the findFirst guard above; the loser
+    // hits Payment.transactionId's unique constraint instead of a clean 404/409.
+    if (isUniqueConstraintOn(err, "transactionId")) {
+      const raced = await prisma.payment.findUnique({ where: { transactionId: txn.id } });
+      if (raced) return raced;
+    }
+    throw err;
+  }
 
   if (failed) {
     await prisma.transaction.update({ where: { id: txn.id }, data: { status: "PAYMENT_FAILED" } });
@@ -45,6 +64,11 @@ export async function createPayment(input: CreatePaymentInput, idempotencyKey: s
     return payment;
   }
 
+  // The chain ops below must name the credits that actually changed hands. The
+  // on-chain id is EnergyCredit.creditId — the one mintCredit was called with —
+  // never the transaction id, which was never minted.
+  const transferred: { creditId: string; qtyWh: string; origin: CreditOrigin }[] = [];
+
   await prisma.$transaction(async (tx) => {
     assertTransition("PAYMENT_PENDING", "PAID");
     await tx.transaction.update({ where: { id: txn.id }, data: { status: "PAID" } });
@@ -52,9 +76,14 @@ export async function createPayment(input: CreatePaymentInput, idempotencyKey: s
     for (const match of txn.matches) {
       const listing = await tx.marketplaceListing.findUnique({ where: { id: match.listingId } });
       if (!listing) continue;
-      await tx.energyCredit.update({
+      const credit = await tx.energyCredit.update({
         where: { id: listing.creditId },
         data: { reservedKwh: { decrement: match.quantityKwh.toNumber() }, soldKwh: { increment: match.quantityKwh.toNumber() } },
+      });
+      transferred.push({
+        creditId: credit.creditId,
+        qtyWh: toWattHours(match.quantityKwh),
+        origin: { owner: pseudoAddress(credit.ownerId), qtyWh: toWattHours(credit.quantityKwh) },
       });
     }
 
@@ -70,20 +99,66 @@ export async function createPayment(input: CreatePaymentInput, idempotencyKey: s
     await audit(tx, "PAYMENT_SUCCESS", "Transaction", txn.id, txn.buyerId, { amount: txn.totalAmount.toString() });
   });
 
-  enqueueChainOp(
-    { op: "transfer", creditId: txn.transactionId, to: pseudoAddress(txn.buyerId), qtyWh: new Decimal(txn.quantityKwh).times(1000).toFixed(0) },
-    async (txHash) => {
-      await prisma.transaction.update({ where: { id: txn.id }, data: { blockchainTxHash: txHash, status: "CREDIT_TRANSFERRED" } });
-      await prisma.transaction.update({ where: { id: txn.id }, data: { status: "SETTLEMENT_PENDING" } });
-      emitToUser(txn.buyerId, SOCKET_EVENTS.PAYMENT_UPDATED, { transactionId: txn.transactionId, status: "CREDIT_TRANSFERRED", blockchainTxHash: txHash });
-    },
-    async () => {
-      await prisma.transaction.update({ where: { id: txn.id }, data: { status: "BLOCKCHAIN_FAILED" } });
-    },
-  );
+  await transferOnChain(txn, transferred);
 
   emitToUser(txn.buyerId, SOCKET_EVENTS.PAYMENT_UPDATED, { transactionId: txn.transactionId, status: "PAID" });
   return payment;
+}
+
+function toWattHours(kwh: Decimal.Value): string {
+  return new Decimal(kwh).times(1000).toFixed(0);
+}
+
+/**
+ * A basket can span several sellers' credits, so payment fans out into one
+ * transferCredit per credit. The lifecycle may only advance once — when the last
+ * op lands — and any single failure is terminal for the transaction.
+ */
+async function transferOnChain(
+  txn: { id: string; transactionId: string; buyerId: string },
+  transferred: { creditId: string; qtyWh: string; origin: CreditOrigin }[],
+) {
+  const advance = async (txHash: string | null) => {
+    await prisma.transaction.update({
+      where: { id: txn.id },
+      data: { status: "CREDIT_TRANSFERRED", ...(txHash ? { blockchainTxHash: txHash } : {}) },
+    });
+    await prisma.transaction.update({ where: { id: txn.id }, data: { status: "SETTLEMENT_PENDING" } });
+    emitToUser(txn.buyerId, SOCKET_EVENTS.PAYMENT_UPDATED, {
+      transactionId: txn.transactionId,
+      status: "CREDIT_TRANSFERRED",
+      blockchainTxHash: txHash,
+    });
+  };
+
+  if (transferred.length === 0) {
+    // No matched credits to move — nothing to anchor on-chain, but the lifecycle
+    // must not strand at PAID.
+    logger.warn("Payment settled with no matched credits to transfer", { transactionId: txn.transactionId });
+    await advance(null);
+    return;
+  }
+
+  const to = pseudoAddress(txn.buyerId);
+  let remaining = transferred.length;
+  let firstHash: string | null = null;
+  let failed = false;
+
+  for (const credit of transferred) {
+    enqueueChainOp(
+      { op: "transfer", creditId: credit.creditId, to, qtyWh: credit.qtyWh, origin: credit.origin },
+      async (txHash) => {
+        firstHash ??= txHash;
+        remaining -= 1;
+        if (remaining === 0 && !failed) await advance(firstHash);
+      },
+      async () => {
+        if (failed) return;
+        failed = true;
+        await prisma.transaction.update({ where: { id: txn.id }, data: { status: "BLOCKCHAIN_FAILED" } });
+      },
+    );
+  }
 }
 
 async function releaseCredits(transactionId: string) {

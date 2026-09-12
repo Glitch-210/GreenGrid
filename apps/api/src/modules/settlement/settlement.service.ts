@@ -4,6 +4,7 @@ import { logger } from "../../lib/logger";
 import { audit } from "../../lib/audit";
 import { utilityAdapter } from "../../adapters/utility";
 import { enqueueChainOp } from "../../adapters/chain/queue";
+import { pseudoAddress } from "../../adapters/chain/chain.service";
 import { emitToUser } from "../../sockets/io";
 import { SOCKET_EVENTS } from "../../sockets/events";
 
@@ -113,7 +114,13 @@ async function retireSettledCredits(
     }
 
     enqueueChainOp(
-      { op: "retire", creditId: credit.creditId, qtyWh: retireQty.times(1000).toFixed(0), ref: transactionId },
+      {
+        op: "retire",
+        creditId: credit.creditId,
+        qtyWh: retireQty.times(1000).toFixed(0),
+        ref: transactionId,
+        origin: { owner: pseudoAddress(credit.ownerId), qtyWh: new Decimal(credit.quantityKwh).times(1000).toFixed(0) },
+      },
       async (txHash) => {
         await prisma.energyCredit.update({ where: { id: credit.id }, data: { blockchainTxHash: txHash } });
       },

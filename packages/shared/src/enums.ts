@@ -127,6 +127,7 @@ export const ERROR_CODES = [
   "DUPLICATE_REQUEST",
   "METER_NOT_ACTIVE",
   "RATE_LIMITED",
+  "TRANSACTION_TIMEOUT",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

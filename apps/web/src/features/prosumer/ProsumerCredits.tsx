@@ -1,5 +1,6 @@
 import { Card } from "../../components/ui/Card";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { TxHash } from "../../components/ui/TxHash";
 import { useApiQuery } from "../../hooks/useApi";
 import type { EnergyCreditDTO } from "@wattshare/shared";
 
@@ -18,6 +19,7 @@ export default function ProsumerCredits() {
             <div>
               <p className="font-mono text-sm font-bold">{c.creditId}</p>
               <p className="font-mono text-xs text-on-surface-variant">expires {new Date(c.expiresAt).toLocaleString()}</p>
+              {c.blockchainTxHash && <TxHash hash={c.blockchainTxHash} className="mt-1 inline-block" />}
             </div>
             <div className="text-right">
               <StatusBadge status={c.status === "AVAILABLE" || c.status === "LISTED" ? "live" : "idle"}>

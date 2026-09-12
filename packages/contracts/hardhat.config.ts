@@ -2,7 +2,9 @@ import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
 import type { HardhatUserConfig } from "hardhat/config";
 
-const AMOY_RPC_URL = process.env.BLOCKCHAIN_RPC_URL ?? "https://rpc-amoy.polygon.technology";
+// rpc-amoy.polygon.technology has been unreliable at the DNS level; publicnode
+// is the working Amoy (chainId 80002) endpoint.
+const AMOY_RPC_URL = process.env.BLOCKCHAIN_RPC_URL ?? "https://polygon-amoy-bor-rpc.publicnode.com";
 const PRIVATE_KEY = process.env.BLOCKCHAIN_PRIVATE_KEY ?? "";
 
 const config: HardhatUserConfig = {
