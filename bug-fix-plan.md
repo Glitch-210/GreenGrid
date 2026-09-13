@@ -74,6 +74,55 @@ cancelled trades are struck through and marked "not earned". The nav item that s
 "Txns" but pointed at credit batches now reads "Sales" and points here, with a separate
 "Listings" entry.
 
+**Bug 12** added an expiry tick to the scheduler (every 60s) that marks stale credits
+and listings `EXPIRED`, plus a `CREDIT_EXPIRED` guard at listing creation so the failure
+reaches the seller publishing rather than a buyer at reservation. Credits with
+`reservedKwh > 0` are left alone — expiring under an in-flight purchase would strand it.
+
+**Bugs 8 and 9** were fixed together behind one `lib/notify.ts` helper that persists a
+notification and pushes it down the user's socket in one step; it never throws, because a
+notification is a side-effect of a trade and must not be able to fail one. Sellers are now
+notified — and emitted to — at reservation, payment and settlement, derived from
+`EnergyMatch` so multi-seller baskets reach every seller exactly once. The bell became a
+real menu button (`aria-expanded`, Escape-to-close, focus return) that marks items read
+through the previously-unused `PATCH /notifications/:id/read`. `useSocketInvalidate` was
+fixed first: it depended on an inline array literal, so it re-subscribed on every render.
+
+**Bug 14** made `useAuth` a real `AuthProvider` context wrapping `BrowserRouter` in
+`main.tsx`, so every caller shares one state instead of an independent copy; `useAuth()`
+now throws outside the provider rather than silently forking. The stored-user
+`JSON.parse` is guarded and clears the bad key instead of throwing during render.
+
+**Bug 16** extracted the Bug 1 sellability predicate into `selectSellable` /
+`sellableTotal` and pointed the dashboard at it, so the "Avail to Sell" tile, the header
+pill and the Sell button quote the same number the Sell page will accept — prosumer1 went
+from an advertised 192.89 EC against 62.89 actually listable to 62.89 on both screens.
+
+**Bug 19** bound the Sell page's price input to the selected batch's zone band —
+seeded from `basePrice` instead of a hardcoded 4.25, validated inclusively on change,
+submit disabled with the violation shown inline at the field. The server's
+`PRICE_OUT_OF_BAND` check is unchanged and still the boundary.
+
+**Bugs 20 and 21** finished the Sell form. Quantity is now validated against the listable
+remainder with the limit shown inline (1064 boundary cases checked against the server's
+own predicate, 0 mismatches), and the controls sit in a real `<form onSubmit>` so Enter
+publishes. `Button` defaults to `type="button"` so a button dropped into a form can no
+longer submit it by accident.
+
+**Bug 22** split the Sell page's single `message` string into `{ kind, text }`: errors in
+`text-fault` with a `✕`, success in `text-solar-dark` with a `✓`, in a persistent
+live region that is `role="alert"` for errors and `role="status"` for success. Flagged but
+not fixed: `text-fault` measures 3.55:1 on white and fails WCAG AA — pre-existing and
+app-wide, see that section.
+
+**Bugs 15, 17, 23, 24, 27, 28, 29 and 30** closed the remainder. Sockets are disposed at
+every session boundary; a 401 now ends the session through the auth context instead of
+leaving a dead one rendering; `ProsumerCredits` became a real screen (states, filter, sort,
+deep link to sell); `GET /meters` made the readings API reachable by its intended caller;
+the invariant breach is a named, logged 500; `/credits/generate` no longer claims to have
+created something it did not; and the DTOs were reconciled against the wire, with the
+prosumer dashboard tethered to a shared type the server is annotated against.
+
 **Bugs 3, 25 and 26** were fixed together: seller earnings now come from `EnergyMatch`
 via a shared `getSellerTotals`, used by both `/users/dashboard` and `/analytics/me`,
 against one `SELLER_EARNED_STATUSES` list thresholded at `PAID`.
@@ -82,7 +131,7 @@ Verified live: all three prosumers can list again, the Sell page's advertised ce
 matches what the server accepts, a batch survives a partial listing with its remainder
 still listable, and a simulator-minted credit now appears in the dropdown.
 
-**Test suite:** 27/27 passing (6 suites), up from 13/19 — but see the caveat below. Eight new tests lock in the
+**Test suite:** 27/27 passing (6 suites), up from 13/19 — see the caveat below. Eight new tests lock in the
 fixes, including one asserting the balance invariant holds exactly across a
 reserve/release cycle on a quantity float64 cannot represent (33.3333). `apps/api` now runs Jest with `--runInBand` — these are integration tests against
 one shared database, and parallel workers were failing each other with serialization
@@ -90,7 +139,10 @@ errors; three fixture cleanups were also hardened to delete in FK order.
 
 **Known flakiness — not a code defect.** `TEST_DATABASE_URL` is unset, so the integration
 tests run against the same database as the dev server, whose scheduler polls settlements
-every 10s and ticks the simulator every 30s. Over a ~90s full run it can advance a test's
+every 10s and ticks the simulator every 30s. Five fixture cleanups have been hardened
+against it (deleting in FK order, matching on the row being removed rather than on a
+user that may already be gone), but the multi-allocation test still runs ~24s against a
+30s timeout on the remote Neon instance and can trip it under load. Over a ~90s full run it can advance a test's
 own transaction mid-assertion (`Illegal transaction transition: SETTLEMENT_PENDING ->
 PAYMENT_PENDING`) or mint credits onto a fixture meter. Every suite passes reliably in
 isolation; roughly one full run in two shows a single spurious failure. The fix is to
@@ -112,11 +164,11 @@ Everything else in this document is still open.
 | 5 | **P1** | Seller cannot cancel a listing — endpoint exists, no UI | `marketplace.routes.ts:13` | CONFIRMED — **FIXED** |
 | 6 | **P1** | Partially-listed credit becomes unlistable | `marketplace.service.ts:36` | CONFIRMED — **FIXED** |
 | 7 | **P1** | Cancelling one listing frees a credit still held by another | `marketplace.service.ts:69` | CONFIRMED — **FIXED** |
-| 8 | **P1** | Seller is never notified of anything — sale, payment, settlement | all `emitToUser` sites | CONFIRMED (inspection) |
-| 9 | **P1** | Notification bell is a dead button; `Notification` table never written | `AppShell.tsx:85` | CONFIRMED |
+| 8 | **P1** | Seller is never notified of anything — sale, payment, settlement | all `emitToUser` sites | CONFIRMED — **FIXED** |
+| 9 | **P1** | Notification bell is a dead button; `Notification` table never written | `AppShell.tsx:85` | CONFIRMED — **FIXED** |
 | 10 | **P1** | Prosumers can buy their own listings | `Marketplace.tsx:123` | CONFIRMED — **FIXED** |
 | 11 | **P1** | `reservedKwh` written as a JS float — breaks the balance invariant | `transactions.service.ts:126` | CONFIRMED — **FIXED** |
-| 12 | **P1** | Expired credits still listable; no expiry job | `scheduler.ts` | CONFIRMED (inspection) |
+| 12 | **P1** | Expired credits still listable; no expiry job | `scheduler.ts` | CONFIRMED — **FIXED** |
 | 13 | **P1** | No prosumer sales screen; nav "Txns" points at credits | `AppShell.tsx:31` | CONFIRMED — **FIXED** |
 | 14 | **P2** | `useAuth` is per-component state, not shared | `useAuth.ts:8` | CONFIRMED (inspection) |
 | 15 | **P2** | Socket auth token captured once, never refreshed | `socket.ts:8` | CONFIRMED (inspection) |
@@ -134,7 +186,7 @@ Everything else in this document is still open.
 | 27 | **P2** | Prosumer cannot discover their own meter id | no `GET /meters` | CONFIRMED (inspection) |
 | 28 | **P2** | Balance-invariant breach surfaces as a generic 500 | `credit-engine.service.ts:95` | CONFIRMED (inspection) |
 | 29 | **P2** | `POST /credits/generate` returns `201` with `data: null` | `credits.controller.ts:27` | CONFIRMED (inspection) |
-| 30 | **P3** | Dead code: `getPayment`, `createNotification`, `_unused` import | `payments.service.ts:171` | CONFIRMED (inspection) |
+| 30 | **P3** | Dead code: `getPayment`, `_unused` import (`createNotification` now wired) | `payments.service.ts:171` | CONFIRMED — partly fixed |
 | 31 | **P2** | Released listing stuck at `PARTIAL` when fully restored | `transactions.service.ts:238` | CONFIRMED — **FIXED** |
 
 ---
@@ -784,6 +836,10 @@ state and asserts earnings are monotonic.
 
 ## Bug 14 — `useAuth` is per-component state
 
+**Status: FIXED.** `hooks/useAuth.tsx` is now an `AuthProvider` context wrapping
+`BrowserRouter` in `main.tsx`; all callers share one state, and the stored-user
+`JSON.parse` is guarded.
+
 **Status: CONFIRMED (inspection).**
 
 `hooks/useAuth.ts:8` is a plain hook holding its own `useState`, seeded from
@@ -805,6 +861,8 @@ the `localStorage` write-through so refresh still restores the session.
 
 ## Bug 15 — Socket token is captured once and never refreshed
 
+**Status: FIXED.** `disconnectSocket()` disposes the singleton on login, on logout and on a 401.
+
 **Status: CONFIRMED (inspection).**
 
 `lib/socket.ts:5-12` builds the socket lazily and reads the token **inside the
@@ -817,9 +875,30 @@ authenticated as the first user, receiving their `user:<id>` room events — inc
 **Fix.** Export a `disconnectSocket()` that closes the socket and nulls the singleton;
 call it from `logout()`. Reconnect with the fresh token on next `getSocket()`.
 
+### Fix — APPLIED
+
+`lib/socket.ts` gained `disconnectSocket()`: it removes all listeners, disconnects and
+nulls the singleton, so the next `getSocket()` dials again with whatever token is current.
+It is called from three places in `AuthProvider`:
+
+- **`logout()`** — the case in the bug. Clearing storage left a live socket still joined to
+  the departing user's `user:<id>` room.
+- **`login()` / `register()`** (via `persist`) — a socket opened before this token existed
+  (or with a `null` token) would otherwise be inherited by the incoming session.
+- **the 401 handler** (Bug 24) — a session the server has rejected must not keep a
+  connection authenticated as the user who just lost it.
+
+The `auth: { token: ... }` read is annotated at the call site explaining that it is
+evaluated once at construction, which is what makes disposal load-bearing rather than
+tidy-up.
+
 ---
 
 ## Bug 16 — "Avail to Sell" contradicts the Sell page
+
+**Status: FIXED.** The dashboard now quotes `creditBalance.listable`, computed by the
+same `selectSellable` predicate the Sell page's batch list uses, and the progress-bar
+denominator includes `retired`. See "Fix — APPLIED" below.
 
 **Status: CONFIRMED.** The dashboard tile read **"AVAIL TO SELL — 179.05 EC — Ready for
 market"**, the header pill read **"179.05 EC · Rs 576.00"**, and the Sell button was
@@ -839,9 +918,51 @@ Also note `ProsumerDashboard.tsx:23` computes `total = available + reserved + so
 omitting `retired` even though the API returns it — so the three progress bars (`:48-50`)
 are percentages of the wrong denominator once anything is retired.
 
+### Fix — APPLIED
+
+The Bug 1 predicate was inlined in `listCreditsForOwner`, so the dashboard could not have
+reused it without copying it — and a copied predicate is how the two screens drift apart
+again. It is now extracted into `credit-engine.service.ts` as three exports:
+
+- `listedRemainderByCredit(creditIds)` — open (`ACTIVE`/`PARTIAL`) listing quantity per credit,
+- `selectSellable(credits, listedByCredit)` — the single definition of sellable, returning
+  each credit with its `listableKwh`,
+- `sellableTotal(credits)` — the sum, for callers that want one number.
+
+`listCreditsForOwner` (the Sell page) and `prosumerDashboard` (the tile, the header pill
+and the Sell button label) now both run that one predicate. The dashboard returns
+`creditBalance.listable` **alongside** `available` rather than replacing it: `available` is
+still the honest portfolio balance the progress bars need to satisfy the
+`available + reserved + sold + retired == quantity` invariant, and only the *sellable*
+question has a different answer. The "Avail to Sell" tile, the `AppShell` header pill and
+the Sell button all read `listable`; the tile's sub-label reads "Nothing listable" at zero
+instead of "Ready for market".
+
+The progress-bar denominator now includes `retired`, and a fourth "Retired" bar was added
+so the bars account for the whole batch rather than silently dropping a slice.
+
+Verified live against the seeded database — dashboard figure vs. Sell page batch list,
+per prosumer:
+
+| seller | raw `available` (was shown) | `listable` (now shown) | Sell page |
+|---|---|---|---|
+| prosumer1 | 192.89 | **62.89** | 62.89 (37 batches) |
+| prosumer2 | 525.24 | **125.24** | 125.24 (65 batches) |
+| prosumer3 | 143.60 | **53.60** | 53.60 (30 batches) |
+| prosumer4 | 0.00 | **0.00** | 0.00 (0 batches) |
+
+The overstatement was 130 EC for prosumer1 and 400 EC for prosumer2. Both screens now
+agree exactly. Test suite still 27/27; `tsc --noEmit` clean on both apps.
+
+**Left open deliberately:** the "In Escrow" tile is labelled "Listed on market" but shows
+`reservedKwh`, which is quantity a *buyer* has reserved, not quantity listed. That is a
+separate mislabelling, not part of this contradiction.
+
 ---
 
 ## Bug 17 — `MarketplaceListingDTO` does not match the API
+
+**Status: FIXED.** The listing DTO was corrected with Bug 10; the dashboard now has a shared `ProsumerDashboardDTO`, and the `Meter`/`Transaction`/`Settlement` DTOs were reconciled against the wire.
 
 **Status: CONFIRMED.** The live response keys are
 `createdAt, creditId, expiresAt, gridZoneId, id, pricePerKwh, quantityKwh, remainingKwh,
@@ -871,6 +992,35 @@ rows the same way — `MeterDTO` omits `ratedKw`, `TransactionDTO` omits
 `idempotencyKey`/`chainAttempts`/`failureReason` (all observed on the wire),
 `SettlementDTO` omits `attempts`/`settledAt` — because those routes return raw Prisma rows.
 
+### Fix — APPLIED
+
+**`MarketplaceListingDTO` was already corrected as part of Bug 10** — `sellerId` dropped,
+`zoneCode` and `isOwn` added — and now matches `listListings`' projection field for field.
+
+**The prosumer dashboard now has a DTO.** `ProsumerDashboardDTO` in
+`packages/shared/src/types.ts` replaces the two inline re-declarations in
+`ProsumerDashboard.tsx` and `AppShell.tsx` (the AppShell copy had been omitting fields).
+`prosumerDashboard` in `users.service.ts` is **annotated with that return type**, so the
+two sides can no longer drift without a compile error — which is the actual fix; a shared
+interface nobody checks against drifts just as quietly.
+
+**The other three drifting DTOs were reconciled against the wire**, verified by
+serializing real rows and comparing field by field:
+
+| DTO | added | wire type confirmed |
+|---|---|---|
+| `MeterDTO` | `ratedKw`, `createdAt`, optional `gridZone` | `string`, `string`, `object` |
+| `TransactionDTO` | `idempotencyKey`, `chainAttempts`, `failureReason` | `string`/null, `number`, `string`/null |
+| `SettlementDTO` | `attempts`, `failureReason`, `createdAt`, `settledAt` | `number`, `string`/null, `string`, `string`/null |
+
+All three now declare every field those routes actually return.
+
+**Not done — the Zod half.** The plan's "longer term, derive the DTO from a Zod schema and
+parse responses" is untouched. Runtime response validation is a structural change across
+every route and screen, and it is different work from correcting the types. Until it
+lands these DTOs stay hand-maintained and can drift again; the dashboard is the only one
+with a compile-time tether.
+
 ---
 
 ## Bug 18 — Publishing a listing leaves the rest of the app stale
@@ -895,6 +1045,10 @@ listing cancellation (Bug 5) and the marketplace buy, invalidating
 
 ## Bug 19 — Price band shown but not enforced
 
+**Status: FIXED.** The price input is now bound to the selected batch's zone band,
+seeded from `basePrice`, and submit is blocked with an inline violation. See
+"Fix — APPLIED" below.
+
 **Status: CONFIRMED.** The page displayed **"Allowed range: Rs 2.5–Rs 7/kWh in Ahmedabad
 West"** while the price input defaulted to a hardcoded **4.25**, unrelated to the zone's
 `basePrice` of 4.00. No client-side validation binds the input to the band.
@@ -912,9 +1066,54 @@ submit and show the violation inline. Default the price input to the zone's `bas
 once a batch is selected. Keep the server check — client validation is UX, the server is
 the boundary.
 
+### Fix — APPLIED
+
+`ProsumerSell.tsx` only. The server check in `marketplace.service.ts:37-39` is untouched
+and remains the boundary; this is purely the seller finding out before the round-trip.
+
+- **The magic `4.25` is gone.** The price seeds from the selected batch's zone
+  `basePrice`, via an effect keyed on `selectedZone`, so the form opens inside the band it
+  advertises. A `priceTouched` flag stops the seed from overwriting what the seller types;
+  picking a different batch clears it, so a batch in another zone re-seeds correctly.
+- **`priceError`** is a `useMemo` over the typed value: non-numeric or `<= 0`, below
+  floor, or above ceiling, phrased with the zone name ("Below the floor of ₹2.50/kWh in
+  Ahmedabad West."). Bounds are **inclusive**, matching the server's `lt`/`gt`.
+- **The band line is now the error slot.** It reads the allowed range normally and the
+  violation in `text-fault` when there is one, so the message sits at the field rather
+  than in the shared grey status line at the bottom (which is Bug 22). The input border
+  turns `border-fault`, and it carries `aria-invalid` plus `aria-describedby` pointing at
+  that line, so the violation reaches a screen reader too.
+- **Submit is disabled** while a violation stands, and `submit()` early-returns on one as
+  well — the button is not the only way into it (Bug 21 is about to add Enter).
+- `min`/`max` on the input now carry the real band instead of `min={0}`, so the stepper
+  arrows stay inside it.
+
+Verified against both seeded zones by running the client predicate and the server's
+`Decimal` predicate over 11 prices each — floor, ceiling, `basePrice`, each bound ±0.01,
+zero, negative, and far out of band:
+
+| zone | band | basePrice | result |
+|---|---|---|---|
+| GZ-AHM-W Ahmedabad West | ₹2.50–₹7.00 | ₹4.00 | agrees on all 11 |
+| GZ-AHM-E Ahmedabad East | ₹2.50–₹7.00 | ₹4.10 | agrees on all 11 |
+
+Both seeded `basePrice` values sit inside their band, so the new default never opens the
+form already in violation. `tsc --noEmit` and the web build are clean. No API change, so
+the API suite is unaffected.
+
+**Note.** The client resolves the band from `credit.gridZoneId` while the server resolves
+it from `credit.meter.gridZone`. These are written from the same zone at mint
+(`credit-engine.service.ts:63`) and can only diverge if a meter is later reassigned to
+another zone — at which point the client would validate against the stale band and the
+server would still reject. Out of scope here; noted in case meter reassignment is ever
+added.
+
 ---
 
 ## Bug 20 — Quantity `max` is not enforced
+
+**Status: FIXED.** The quantity is validated against the listable remainder, submit is
+blocked, and the limit is shown inline at the field. See "Fix — APPLIED" below.
 
 **Status: CONFIRMED.** With `max="170.1266"` on the input, typing **100** left the Publish
 button **enabled**; clicking it produced a server `INSUFFICIENT_CREDITS` rejection (the
@@ -930,9 +1129,34 @@ input paths disagree.
 **Fix.** Validate `0 < qty <= listableMax` (the Bug 6 remainder, not raw `availableKwh`),
 disable submit, and show the limit inline.
 
+### Fix — APPLIED
+
+`quantityError` mirrors the Bug 19 `priceError`: non-numeric or `<= 0`, or above
+`maxKwh` — which is `listableKwh`, the Bug 1/6 remainder, not raw `availableKwh`. The
+"Max available to list" line is now the error slot (`text-fault` when violated), the input
+gains `border-fault` plus `aria-invalid` / `aria-describedby`, submit is disabled while a
+violation stands, and `onSubmit` early-returns on one. The two input paths no longer
+disagree: typing is now held to the same ceiling the `+` stepper already clamped to.
+
+Verified that the client predicate and the server's `INSUFFICIENT_CREDITS` predicate
+(`qty + listedSoFar > availableKwh`) agree, over every sellable batch in the seeded
+database — 133 batches across four prosumers, 8 quantities each (the exact ceiling, ±0.01
+either side, half, zero, negative, 100, and 0.001):
+
+**1064 cases, 0 mismatches.**
+
+The two are algebraically the same test, since `listableKwh = availableKwh - listedSoFar`;
+the run confirms no rounding gap opens between `Number` on the client and `Decimal` on the
+server at the boundary.
+
+---
+
 ---
 
 ## Bug 21 — The sell form is not a form
+
+**Status: FIXED.** The controls are wrapped in `<form onSubmit>`, and `Button` now
+defaults to `type="button"`. See "Fix — APPLIED" below.
 
 **Status: CONFIRMED.** `document.querySelector('select').closest('form')` returned
 **null** — the controls are not inside a `<form>`. Pressing Enter in either numeric input
@@ -949,9 +1173,37 @@ does nothing.
 `type="submit"`. Give `Button` a default `type="button"` so this class of bug cannot recur
 elsewhere.
 
+### Fix — APPLIED
+
+The `<Card>`'s inner `div` became `<form onSubmit={onSubmit} noValidate>` — `Card` is a
+plain `div` (`ui/Card.tsx:5`), so the form nests cleanly. `submit()` became
+`onSubmit(e: FormEvent)` with `preventDefault()`, so Enter in either numeric input
+publishes instead of doing nothing, and the page does not navigate away. `noValidate` is
+deliberate: the inputs carry real `min`/`max` after Bugs 19 and 20, and without it the
+browser's own constraint bubble would preempt the inline messages those bugs added.
+
+`Button` now defaults to `type="button"`, applied before the prop spread so callers can
+still override. Both existing forms (`LoginPage.tsx:48`, `RegisterPage.tsx:64`) already
+pass `type="submit"` explicitly, so nothing regressed; the Sell page's publish button
+gained `type="submit"` and dropped its `onClick`.
+
+Verified in Chrome against the running app: on `/login`, the sole `Button` still reports
+`type: "submit"` and `closest('form')` non-null, confirming the new default does not
+shadow an explicit `type`. The `+`/`-` steppers keep their own `type="button"`.
+
+**Not verified live on `/prosumer/sell`:** that route is behind `RequireAuth`, and
+reaching it means entering the seeded password into the login form, which I do not do.
+To check it yourself, sign in as `prosumer1@demo.in` and run
+`document.querySelector("select").closest("form")` — it should now return the `<form>`
+rather than `null`.
+
 ---
 
 ## Bug 22 — Success and failure look identical
+
+**Status: FIXED.** `message` is now `{ kind, text }`, errors render in `text-fault` with
+a `✕` glyph, success in `text-solar-dark` with `✓`, and the region is a live
+region with `role="alert"` / `role="status"`. See "Fix — APPLIED" below.
 
 **Status: CONFIRMED.** The error "Not enough available EC to list" rendered with
 `className="font-mono text-sm"`, computed colour **`rgb(27, 27, 27)`** (near-black — the
@@ -967,9 +1219,48 @@ renders it in plain text either way. Error text elsewhere in the app uses `text-
 **Fix.** Split into `{ kind: "ok" | "error", text }`, style errors with `text-fault`, and
 give the region `role="status"` / `role="alert"`.
 
+### Fix — APPLIED
+
+`ProsumerSell.tsx` only. `message` is now `FormMessage = { kind: "ok" | "error"; text }`,
+set at all four sites (blocked submit, success, request failure, and cleared on retry).
+
+- **Colour.** Errors `font-bold text-fault`, success `text-solar-dark` — matching the
+  `text-fault` convention already used by `Marketplace.tsx:100` and
+  `ProsumerListings.tsx:55`.
+- **Not colour alone.** A `✕` / `✓` glyph precedes the text, `aria-hidden` since
+  the role already carries severity — so the outcome survives a colour-blind reader or a
+  greyscale screenshot.
+- **Announced.** The wrapper carries `role="alert"` + `aria-live="assertive"` for errors
+  and `role="status"` + `aria-live="polite"` for success, with `aria-atomic`. It is
+  rendered **unconditionally** rather than only when a message exists: a live region
+  created in the same commit as its content is unreliably announced, so the empty
+  `min-h-[1.5rem]` container has to be there first.
+
+### Follow-up found while fixing this — `text-fault` fails contrast
+
+Measured against the white card background:
+
+| token | hex | contrast | WCAG AA (4.5:1, normal text) |
+|---|---|---|---|
+| `text-fault` (errors) | `#FF3B30` | **3.55:1** | **fails** |
+| `text-solar-dark` (success) | `#166534` | 7.13:1 | passes |
+| the old shared near-black | `#1b1b1b` | 17.22:1 | passes |
+
+`font-bold` at `text-sm` (14px) does not reach the large-text exemption (18.66px bold), so
+3.55:1 is a genuine AA failure. This is **pre-existing and app-wide** — `text-fault` is the
+established error colour on `Marketplace.tsx:100` and `ProsumerListings.tsx:55,62` — so
+this fix follows the convention rather than diverging from it on one screen.
+
+The palette change belongs in its own pass: add a `fault.dark` token (a red at or below
+`#D32F2F`, 4.5:1+ on white) for error **text**, leaving `fault.DEFAULT` for `bg-fault`
+fills. Note `bg-fault` with `text-white` (`Button.tsx:6`) measures the same 3.55:1 and has
+the same problem. Not changed here — recolouring the palette is well outside this bug.
+
 ---
 
 ## Bug 23 — `ProsumerCredits` is inert
+
+**Status: FIXED.** The screen renders loading / error / empty distinctly, filters and sorts, and every sellable batch deep-links into the Sell page.
 
 **Status: CONFIRMED.** The live page rendered **13 credit cards and 0 interactive
 elements** inside `<main>` — no buttons, links, inputs or selects. Status badges rendered
@@ -990,9 +1281,31 @@ batch" button per row deep-linking to `/prosumer/sell?creditId=...` with `Prosum
 reading the param to preselect. Once Bug 1 lands, drive the badge off sellability rather
 than a status allowlist.
 
+### Fix — APPLIED
+
+- **Three states, told apart.** `isLoading` renders a `role="status"` line, `isError` a
+  `role="alert"` card with a **Retry** button wired to `refetch()`, and the empty state
+  only when the fetch actually succeeded with nothing in it. A failed fetch previously
+  rendered exactly like an account with no credits.
+- **"Sell this batch"** per row, linking to `/prosumer/sell?creditId=…`. `ProsumerSell`
+  reads the param and preselects the batch **only once the sellable list has loaded and
+  only if that batch is in it**, so a stale or hand-edited link cannot select something
+  the form would immediately reject.
+- **The badge is driven off sellability, not a status allowlist.** The screen also queries
+  `/credits?sellable=true` — the same query key the Sell page uses, so it is one cache
+  entry and the two screens cannot disagree — and reads `listableKwh` from it. A batch
+  shows **Sellable** when the server says there is a remainder, **Expired** past
+  `expiresAt`, and its raw status otherwise. This matters because `availableKwh` does not
+  drop when a batch is listed, so sellability genuinely cannot be computed from the row.
+- **Filter** (All / Sellable / Expired, as `aria-pressed` toggles) and **sort** (newest /
+  expiring soon / largest). The empty state distinguishes "no credits at all" from "no
+  batches match this filter".
+
 ---
 
 ## Bug 27 — A prosumer cannot discover their own meter
+
+**Status: FIXED.** `GET /meters` and `GET /meters/:id` are implemented, making the readings API reachable by its intended caller.
 
 **Status: CONFIRMED (inspection).**
 
@@ -1008,9 +1321,42 @@ generation-history view on `/prosumer` — currently the dashboard shows portfol
 but nothing about the solar generation that produced them, which is the prosumer's actual
 physical activity.
 
+### Fix — APPLIED
+
+Two routes on `meters.routes.ts`, both behind `authMiddleware`:
+
+- **`GET /meters`** → `listMyMeters`, scoped by `userId: user.id` **in the query**. Not
+  fetch-then-check: there is no id to guess and no ownership check to forget, so Bug 4's
+  failure mode is impossible here by construction.
+- **`GET /meters/:id`** → `getMeterById`, owner-only via the existing `assertCanRead`, so
+  oversight roles keep their read exemption.
+
+Both join the grid zone for display. `docs/backend.md:274` specified the second one; it
+now exists.
+
+Verified live against the seeded database:
+
+| check | result |
+|---|---|
+| `listMyMeters(prosumer1)` | 1 meter — `MTR-101@GZ-AHM-W`, rated 6 kW |
+| every returned meter belongs to the caller | true |
+| `getMeterById` as the owner | ok |
+| `getMeterById` as a **different prosumer** | **404 NOT_FOUND** (not 403 — a 403 confirms the id exists) |
+| `getMeterById` as REGULATOR | allowed, oversight read |
+| `listReadings` using the id the new endpoint returned | **510 readings** |
+
+That last row is the point of the bug: the readings API held 510 rows for this prosumer
+and was unreachable because nothing would tell them their own meter id.
+
+**Note.** The generation-history *screen* the plan mentions as unblocked is not built —
+the endpoints exist and are verified, but no frontend consumes them yet. That is a new
+feature, not part of this defect.
+
 ---
 
 ## Bug 28 — Invariant breach surfaces as an opaque 500
+
+**Status: FIXED.** The guard throws a named `CREDIT_INVARIANT_VIOLATION` `ApiError` with the full balance breakdown, logged at error level.
 
 **Status: CONFIRMED (inspection).**
 
@@ -1025,9 +1371,31 @@ affected.
 payload, and log at `error` level with the full balance breakdown. This is the alarm for
 Bug 11; it should be legible when it fires.
 
+### Fix — APPLIED
+
+- **`CREDIT_INVARIANT_VIOLATION`** added to `ERROR_CODES`, and **`ApiError.internal()`**
+  added beside the existing 400/401/403/404/409 helpers — there was no 500 constructor, so
+  a typed server fault was not expressible.
+- **`assertInvariant`** now builds a detail payload — credit row id, `creditId`, all five
+  balances, the computed `sum`, the `delta`, and `reason` (`SUM_MISMATCH` vs
+  `NEGATIVE_BALANCE`) — logs it at `error` level, then throws
+  `ApiError.internal("CREDIT_INVARIANT_VIOLATION", …, details)`. Both branches are
+  covered; the negative-balance case used to throw a message with no numbers in it at all.
+- **`error.middleware.ts` now logs 5xx `ApiError`s.** This was a real trap: the middleware
+  logged *only* non-`ApiError`s, so typing the error would have **silenced** the alarm it
+  was meant to make legible. 4xx stays quiet (the caller's problem); `details` is logged
+  but deliberately **not** returned, being operator diagnostics rather than something a
+  client can act on.
+
+Verified: `ApiError.internal("CREDIT_INVARIANT_VIOLATION", …)` maps to **status 500, code
+`CREDIT_INVARIANT_VIOLATION`** through `error.middleware.ts`, in place of the previous
+anonymous `500 INTERNAL_ERROR`.
+
 ---
 
 ## Bug 29 — `POST /credits/generate` returns `201` with a null body
+
+**Status: FIXED.** The no-surplus path returns `200 { minted: false, reason: NO_SURPLUS }`; a real mint returns `201 { minted: true, credit }`.
 
 **Status: CONFIRMED (inspection).** The live probe hit `CREDITS_ALREADY_ISSUED` first, so
 the null path was not reached; the code path is unambiguous.
@@ -1040,6 +1408,21 @@ consumer is typed to handle.
 
 **Fix.** Return `200` with an explicit `{ minted: false, reason: "NO_SURPLUS" }`. Reserve
 `201` for an actual mint.
+
+### Fix — APPLIED
+
+`generateCreditHandler` branches on the null:
+
+- no surplus → **`200 { minted: false, reason: "NO_SURPLUS" }`**
+- minted → **`201 { minted: true, credit }`**
+
+The success envelope is now discriminated, so a consumer can tell the two apart without
+null-checking a field that was typed as non-null. Nothing consumes this route yet — no
+frontend caller, no test — so the shape change breaks nothing.
+
+Verified live: an unissued zero-surplus `VERIFIED` reading was found in the seeded data and
+run through `mintFromReading`, which returned `null` — the branch that previously produced
+`201` with `data: null` and now produces the `200`.
 
 ---
 
@@ -1066,11 +1449,26 @@ restored quantity, so a `PARTIAL` listing that is now whole again stays `PARTIAL
 same release path also sets the credit to `AVAILABLE` unconditionally, which is Bug 7's
 failure mode — fix both together.
 
+### Second half — APPLIED later
+
+The status recompute landed but the unconditional `status: "AVAILABLE"` on the credit did
+not, so Bug 7's failure mode was still live on the release path. It is reachable: a credit
+backing **two** listings can be `RETIRED` by settling the first
+(`settlement.service.ts:131`) while the second is still reserved — releasing that second
+reservation then stamped `AVAILABLE` back over the retired credit. The write now skips the
+status when the credit is `FROZEN`/`EXPIRED`/`RETIRED`/`SETTLED`, restoring balance without
+resurrecting a credit that is dead for reasons unrelated to this reservation.
+
+(`FROZEN` has no writer anywhere in the codebase today, so only the `RETIRED` path was
+actually reachable; the guard covers the whole set rather than the one case.)
+
 ---
 
 # P3
 
 ## Bug 24 — 401 clears the token but leaves the user
+
+**Status: FIXED.** The 401 interceptor now calls the auth context's `logout()`, so the user is cleared, the socket dropped, and `RequireAuth` redirects.
 
 **Status: CONFIRMED.** With an invalid token, reloading `/prosumer` produced: token
 cleared from storage (**true**), `user` still in storage (**true**), still on `/prosumer`
@@ -1088,21 +1486,55 @@ passing. Nothing navigates. The hardcoded "Online" badge
 place, call the context's `logout()` from the interceptor rather than hard-navigating, so
 app state and URL stay consistent.
 
+### Fix — APPLIED
+
+`lib/api.ts` exports `setUnauthorizedHandler`; `AuthProvider` registers its own `logout`
+in an effect and unregisters on unmount. On a 401 the interceptor calls it, which clears
+both storage keys, disposes the socket (Bug 15) and sets `user` to `null` — at which point
+`isAuthenticated` goes false and `RequireAuth` renders its existing
+`<Navigate to="/login" replace />`. **No hard navigate**, so app state and URL stay
+consistent, and the provider needs no router context (it sits above `BrowserRouter`).
+
+Two details worth recording:
+
+- **Sign-in failures are excluded.** A rejected `POST /auth/login` is a 401 too. Treating
+  it as an expired session would tear down state on every mistyped password, so the
+  interceptor skips any request whose URL starts with `/auth/`.
+- **A fallback for before the provider mounts** clears `token` **and** `user` directly —
+  leaving `user` behind is the precise bug, so the floor case must not reproduce it.
+
+The hardcoded `"Online"` badge is gone too: it now reads the dashboard query, showing
+**Connecting** while loading and a red **Unreachable** on error, so a session that cannot
+load anything no longer presents as healthy.
+
 ---
 
 ## Bug 30 — Dead code on the seller path
+
+**Status: FIXED.** Both remaining leftovers are deleted.
 
 **Status: CONFIRMED (inspection).** Three leftovers, harmless but misleading when reading
 the module:
 
 - `payments.service.ts:171` `getPayment(transactionId)` — implemented, exported, never
   imported; there is no `GET /payments/:id` route.
-- `notifications.service.ts:14` `createNotification` — never called (Bug 9).
+- ~~`notifications.service.ts:14` `createNotification`~~ — now the single write path for notifications, called via `lib/notify.ts` (fixed with Bug 9).
 - `credit-engine.service.ts:5,14` — `nextTransactionId as _unused` imported and then
   `void _unused;`.
 
 **Fix.** Delete the `_unused` import. Either route `getPayment` or delete it.
 `createNotification` gets wired up by Bug 9.
+
+### Fix — APPLIED
+
+- **`nextTransactionId as _unused`** and its `void _unused;` are gone from
+  `credit-engine.service.ts`.
+- **`getPayment` deleted**, not routed. Routing it would have duplicated an existing
+  capability — `GET /transactions/:id` already includes `payment: true` — *and* required a
+  fresh ownership check, since `getPayment(transactionId)` had none and would have
+  reopened Bug 4 on a new surface. Adding an authorization surface for a consumer that
+  does not exist is the wrong trade; confirmed it had no callers before removing it.
+- `createNotification` was wired up by Bug 9, as noted.
 
 ---
 
@@ -1143,12 +1575,12 @@ Several of these share a root cause; this order avoids rework.
 5. ~~**Bug 2**~~ — **DONE.** Rate set to 5% and made server-owned.
 6. ~~**Bug 10**~~ — **DONE.** `SELF_TRADE` guard server-side plus `isOwn` on the client
    (which also corrected the `MarketplaceListingDTO` drift, **Bug 17**).
-7. **Bug 12** — expiry job.
+7. ~~**Bug 12**~~ — **DONE.** Expiry tick plus a guard at listing creation.
 8. **Bugs 14 + 15 + 24** — auth context, socket lifecycle, 401 handling. One coherent
    session-management pass.
 9. ~~**Bug 18 + 5 + 13**~~ — **DONE.** `useApiMutation`, the my-listings screen with
    withdraw, and the seller-side sales screen.
-10. **Bugs 8 + 9** — seller events and notifications, once the screens exist to show them.
+10. ~~**Bugs 8 + 9**~~ — **DONE.** Seller-facing socket events and a working notification menu.
 11. **Bugs 19–23** — Sell-form hardening and `ProsumerCredits`, as one pass.
 12. **Bugs 17 + 27 + 29 + 30** — shared DTOs, `GET /meters`, response-shape and dead-code
     cleanup. Low risk, do last.
@@ -1156,10 +1588,11 @@ Several of these share a root cause; this order avoids rework.
 Done so far: **1, 2, 3, 4, 6, 7, 10, 11, 17, 25, 26, 31** — every P0, and the P1s that
 touch money, security or balance integrity.
 
-Of what remains, **Bug 12** (no expiry job) is the last correctness gap, and
-**Bugs 8 + 9** (the seller is never notified of a sale; the notification bell is inert)
-are the biggest remaining hole in the seller experience now that the screens exist to
-show them.
+Every P0 and P1 is now closed. What remains is P2/P3 polish: the session-management pass
+(**14 + 15 + 24** — auth context, socket token lifecycle, 401 redirect) is the most
+substantive, then Sell-form hardening (**19–23**) and the DTO/dead-code cleanup
+(**17 + 27 + 29 + 30**). **Bug 28** (invariant breach reports as an opaque 500) is small
+and worth doing whenever the credit engine is next touched.
 
 ---
 

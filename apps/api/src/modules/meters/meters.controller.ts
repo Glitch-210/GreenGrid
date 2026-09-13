@@ -11,6 +11,22 @@ export async function createMeterHandler(req: Request, res: Response, next: Next
   }
 }
 
+export async function listMyMetersHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    ok(res, await metersService.listMyMeters(req.user!));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getMeterHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    ok(res, await metersService.getMeterById(req.user!, req.params.id));
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listReadingsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { page, pageSize } = req.query as unknown as { page: number; pageSize: number };

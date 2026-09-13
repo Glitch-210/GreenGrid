@@ -2,9 +2,10 @@ import { prisma } from "../../config/prisma";
 import { Decimal } from "../../lib/decimal";
 import { ApiError } from "../../lib/ApiError";
 import { audit } from "../../lib/audit";
-import { nextCreditId, nextTransactionId as _unused } from "../../lib/ids";
+import { nextCreditId } from "../../lib/ids";
 import { eligibleCreditKwh } from "../../lib/calculations";
 import { env } from "../../config/env";
+import { logger } from "../../lib/logger";
 import { enqueueChainOp } from "../../adapters/chain/queue";
 import { pseudoAddress } from "../../adapters/chain/chain.service";
 import { emitToUser } from "../../sockets/io";
@@ -12,8 +13,6 @@ import { SOCKET_EVENTS } from "../../sockets/events";
 import { assertOwns, assertCanRead } from "../../lib/authorize";
 import type { AuthUser } from "../../middleware/auth.middleware";
 import type { CreditStatus } from "@prisma/client";
-
-void _unused;
 
 /**
  * Mint an EnergyCredit batch from a VERIFIED, not-yet-issued MeterReading.
@@ -47,6 +46,8 @@ export async function mintFromReading(readingId: string, requestedBy?: AuthUser)
     const zone = fullReading.meter.gridZone;
     const eligible = eligibleCreditKwh(fullReading.generationKwh, fullReading.consumptionKwh, zone.lossFactor);
     if (eligible.lte(0)) {
+      // The reading is consumed either way, but no credit exists. The caller is
+      // told so explicitly rather than handed a null that reads as a mint.
       await tx.meterReading.update({ where: { id: readingId }, data: { creditIssued: true } });
       return null;
     }
@@ -97,39 +98,91 @@ function toWattHours(kwh: Decimal.Value): string {
   return new Decimal(kwh).times(1000).toFixed(0);
 }
 
-/** available + reserved + sold + retired == quantity, available/reserved >= 0. */
-function assertInvariant(c: { quantityKwh: Decimal; availableKwh: Decimal; reservedKwh: Decimal; soldKwh: Decimal; retiredKwh: Decimal }) {
+interface CreditBalance {
+  id?: string;
+  creditId?: string;
+  quantityKwh: Decimal;
+  availableKwh: Decimal;
+  reservedKwh: Decimal;
+  soldKwh: Decimal;
+  retiredKwh: Decimal;
+}
+
+/**
+ * available + reserved + sold + retired == quantity, available/reserved >= 0.
+ *
+ * This is the alarm for the precision bugs; it has to be legible when it fires.
+ * A raw Error was mapped to an anonymous 500 INTERNAL_ERROR by
+ * error.middleware.ts with no code and no way to tell which credit broke, so it
+ * throws a named ApiError carrying the full breakdown and logs at error level.
+ */
+function assertInvariant(c: CreditBalance) {
   const sum = new Decimal(c.availableKwh).plus(c.reservedKwh).plus(c.soldKwh).plus(c.retiredKwh);
-  if (!sum.equals(c.quantityKwh)) {
-    throw new Error(`Credit balance invariant violated: ${sum.toString()} != ${c.quantityKwh.toString()}`);
-  }
-  if (c.availableKwh.lt(0) || c.reservedKwh.lt(0)) {
-    throw new Error("Credit balance went negative");
-  }
+  const negative = c.availableKwh.lt(0) || c.reservedKwh.lt(0);
+  if (sum.equals(c.quantityKwh) && !negative) return;
+
+  const details = {
+    creditRowId: c.id ?? null,
+    creditId: c.creditId ?? null,
+    quantityKwh: c.quantityKwh.toString(),
+    availableKwh: c.availableKwh.toString(),
+    reservedKwh: c.reservedKwh.toString(),
+    soldKwh: c.soldKwh.toString(),
+    retiredKwh: c.retiredKwh.toString(),
+    sum: sum.toString(),
+    delta: sum.minus(c.quantityKwh).toString(),
+    reason: negative ? "NEGATIVE_BALANCE" : "SUM_MISMATCH",
+  };
+  logger.error("Credit balance invariant violated", details);
+  throw ApiError.internal(
+    "CREDIT_INVARIANT_VIOLATION",
+    negative
+      ? "Credit balance went negative"
+      : `Credit balance invariant violated: ${sum.toString()} != ${c.quantityKwh.toString()}`,
+    details,
+  );
 }
 
 /** Statuses in which a credit can never be sold, whatever its balance says. */
 const UNSELLABLE_STATUSES: CreditStatus[] = ["FROZEN", "EXPIRED", "RETIRED", "SETTLED"];
 
-export async function listCreditsForOwner(ownerId: string, status?: CreditStatus, sellable?: boolean) {
-  const credits = await prisma.energyCredit.findMany({
-    where: { ownerId, ...(status ? { status } : {}) },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!sellable) return credits;
+/** The fields the sellable predicate reads — any credit row satisfies this. */
+interface SellableInput {
+  id: string;
+  availableKwh: Decimal;
+  expiresAt: Date;
+  status: CreditStatus;
+}
 
-  // A credit's availableKwh does NOT drop when it is listed (only a buyer's
-  // reservation moves balance — §5.6), so "how much can I still list?" is
-  // availableKwh minus what open listings already spoke for. Anything with a
-  // positive remainder is sellable regardless of status.
+/**
+ * How much of each credit open listings have already spoken for. Exported so
+ * every caller of `selectSellable` feeds it the same numbers.
+ */
+export async function listedRemainderByCredit(creditIds: string[]): Promise<Map<string, Decimal>> {
+  if (creditIds.length === 0) return new Map();
   const listed = await prisma.marketplaceListing.groupBy({
     by: ["creditId"],
-    where: { creditId: { in: credits.map((c) => c.id) }, status: { in: ["ACTIVE", "PARTIAL"] } },
+    where: { creditId: { in: creditIds }, status: { in: ["ACTIVE", "PARTIAL"] } },
     _sum: { remainingKwh: true },
   });
-  const listedByCredit = new Map(listed.map((l) => [l.creditId, l._sum.remainingKwh ?? new Decimal(0)]));
-  const now = new Date();
+  return new Map(listed.map((l) => [l.creditId, l._sum.remainingKwh ?? new Decimal(0)]));
+}
 
+/**
+ * The one definition of "sellable", shared by the Sell page's batch list and the
+ * dashboard's headline figure — two screens quoting two different predicates is
+ * how they came to contradict each other.
+ *
+ * A credit's availableKwh does NOT drop when it is listed (only a buyer's
+ * reservation moves balance — §5.6), so "how much can I still list?" is
+ * availableKwh minus what open listings already spoke for. Anything with a
+ * positive remainder is sellable regardless of status.
+ */
+export function selectSellable<T extends SellableInput>(
+  credits: T[],
+  listedByCredit: Map<string, Decimal>,
+  now = new Date(),
+): Array<T & { listableKwh: Decimal }> {
   return credits
     .filter((c) => c.expiresAt > now && !UNSELLABLE_STATUSES.includes(c.status))
     .map((c) => ({
@@ -139,6 +192,22 @@ export async function listCreditsForOwner(ownerId: string, status?: CreditStatus
       listableKwh: new Decimal(c.availableKwh).minus(listedByCredit.get(c.id) ?? new Decimal(0)),
     }))
     .filter((c) => c.listableKwh.gt(0));
+}
+
+/** Total kWh the owner could list right now, over the credits given. */
+export async function sellableTotal(credits: SellableInput[]): Promise<Decimal> {
+  const listedByCredit = await listedRemainderByCredit(credits.map((c) => c.id));
+  return selectSellable(credits, listedByCredit).reduce((sum, c) => sum.plus(c.listableKwh), new Decimal(0));
+}
+
+export async function listCreditsForOwner(ownerId: string, status?: CreditStatus, sellable?: boolean) {
+  const credits = await prisma.energyCredit.findMany({
+    where: { ownerId, ...(status ? { status } : {}) },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!sellable) return credits;
+
+  return selectSellable(credits, await listedRemainderByCredit(credits.map((c) => c.id)));
 }
 
 export async function getCreditById(user: AuthUser, id: string) {

@@ -189,8 +189,3 @@ async function releaseCredits(transactionId: string) {
   });
 }
 
-export async function getPayment(transactionId: string) {
-  const payment = await prisma.payment.findUnique({ where: { transactionId } });
-  if (!payment) throw ApiError.notFound("Payment not found");
-  return payment;
-}

@@ -26,4 +26,12 @@ export class ApiError extends Error {
   static conflict(errorCode: ErrorCode | string, message: string, details?: Record<string, unknown>) {
     return new ApiError(409, errorCode, message, details);
   }
+  /**
+   * A server-side failure the caller cannot act on, but with a name and a detail
+   * payload — so it is legible in logs and to on-call, rather than an anonymous
+   * INTERNAL_ERROR from the catch-all in error.middleware.ts.
+   */
+  static internal(errorCode: ErrorCode | string, message: string, details?: Record<string, unknown>) {
+    return new ApiError(500, errorCode, message, details);
+  }
 }

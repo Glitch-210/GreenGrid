@@ -1,16 +1,12 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Role } from "@wattshare/shared";
+import type { ProsumerDashboardDTO } from "@wattshare/shared";
 import { useAuth } from "../../hooks/useAuth";
 import { useApiQuery } from "../../hooks/useApi";
 import { formatEC, formatINR } from "../../lib/format";
 import { Logo } from "./Logo";
 import { NotificationMenu } from "./NotificationMenu";
 import { useSocketInvalidate } from "../../hooks/useSocket";
-
-interface ProsumerDashboardData {
-  creditBalance: { available: string; reserved: string; sold: string; retired: string };
-  totalEarnings: string;
-}
 
 interface NavItem {
   key: string;
@@ -70,7 +66,7 @@ export function AppShell() {
   const location = useLocation();
   const role = (user?.role ?? Role.CONSUMER) as Role;
 
-  const { data: dashboard } = useApiQuery<ProsumerDashboardData>(
+  const { data: dashboard } = useApiQuery<ProsumerDashboardDTO>(
     ["dashboard", "prosumer"],
     "/users/dashboard",
     role === Role.PROSUMER,
@@ -93,8 +89,11 @@ export function AppShell() {
 
         <div className="flex items-center gap-3">
           {role === Role.PROSUMER && dashboard ? (
-            <div className="hidden border-3 border-black bg-white px-2 py-1 font-mono text-xs font-bold shadow-hard-sm sm:block">
-              {formatEC(dashboard.creditBalance.available)} · {formatINR(dashboard.totalEarnings)}
+            <div
+              className="hidden border-3 border-black bg-white px-2 py-1 font-mono text-xs font-bold shadow-hard-sm sm:block"
+              title="Listable credits · earnings to date"
+            >
+              {formatEC(dashboard.creditBalance.listable)} · {formatINR(dashboard.totalEarnings)}
             </div>
           ) : (
             <div className="hidden border-3 border-black bg-white px-2 py-1 font-mono text-xs font-bold uppercase shadow-hard-sm sm:block">

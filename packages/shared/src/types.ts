@@ -63,7 +63,11 @@ export interface MeterDTO {
   gridZoneId: string;
   meterType: MeterType;
   status: MeterStatus;
+  ratedKw: string;
   installedAt: string;
+  createdAt: string;
+  /** Present on the /meters routes, which join the zone for display. */
+  gridZone?: { zoneCode: string; name: string };
 }
 
 export interface MeterReadingDTO {
@@ -148,6 +152,7 @@ export interface MatchPreviewDTO {
 export interface TransactionDTO {
   id: string;
   transactionId: string;
+  idempotencyKey?: string | null;
   buyerId: string;
   sellerId?: string | null;
   quantityKwh: string;
@@ -158,6 +163,8 @@ export interface TransactionDTO {
   status: TxStatus;
   gridZoneId: string;
   blockchainTxHash?: string | null;
+  chainAttempts: number;
+  failureReason?: string | null;
   createdAt: string;
   completedAt?: string | null;
 }
@@ -180,6 +187,32 @@ export interface SettlementDTO {
   settledKwh: string;
   billAdjustment: string;
   status: SettleStatus;
+  attempts: number;
+  failureReason?: string | null;
+  createdAt: string;
+  settledAt?: string | null;
+}
+
+/**
+ * `GET /users/dashboard` as a PROSUMER. Previously re-declared inline in both
+ * ProsumerDashboard.tsx and AppShell.tsx — and inconsistently, the AppShell copy
+ * omitting fields — so neither side could drift-check against the other.
+ */
+export interface ProsumerDashboardDTO {
+  role: "PROSUMER";
+  creditBalance: {
+    /** Raw portfolio balance: still counts expired, frozen and already-listed EC. */
+    available: string;
+    /** What the seller can actually list right now — quote this, not `available`. */
+    listable: string;
+    reserved: string;
+    sold: string;
+    retired: string;
+  };
+  totalEarnings: string;
+  creditCount: number;
+  /** The rate the settlement engine will really apply, so the Sell page can quote it. */
+  platformFeeRate: string;
 }
 
 export interface GridStatusDTO {

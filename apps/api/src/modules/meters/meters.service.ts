@@ -21,6 +21,30 @@ export async function createMeter(user: AuthUser, input: CreateMeterInput) {
   });
 }
 
+/**
+ * The caller's own meters. Scoped by `userId` in the query rather than fetched
+ * then checked, so there is no id to guess and no ownership check to forget —
+ * Bug 4's failure mode is impossible here by construction.
+ */
+export async function listMyMeters(user: AuthUser) {
+  return prisma.meter.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+    include: { gridZone: { select: { zoneCode: true, name: true } } },
+  });
+}
+
+/** One meter by id. Owner-only, with the usual oversight read exemption. */
+export async function getMeterById(user: AuthUser, meterId: string) {
+  const meter = await prisma.meter.findUnique({
+    where: { id: meterId },
+    include: { gridZone: { select: { zoneCode: true, name: true } } },
+  });
+  if (!meter) throw ApiError.notFound("Meter not found");
+  assertCanRead(user, meter.userId, "Meter");
+  return meter;
+}
+
 export async function listReadings(user: AuthUser, meterId: string, page: number, pageSize: number) {
   // Generation history is behavioural data (when someone is home, what their array
   // produces), so it is owner-only — oversight roles may read for reconciliation.

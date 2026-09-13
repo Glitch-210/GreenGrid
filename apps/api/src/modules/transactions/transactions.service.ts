@@ -9,6 +9,7 @@ import { nextTransactionId } from "../../lib/ids";
 import { env } from "../../config/env";
 import * as gridService from "../grid/grid.service";
 import { assertTransition } from "./state-machine";
+import type { CreditStatus } from "@prisma/client";
 import { emitToUser } from "../../sockets/io";
 import { SOCKET_EVENTS } from "../../sockets/events";
 import type { CreateTransactionInput } from "@wattshare/shared";
@@ -170,7 +171,12 @@ export async function createTransaction(buyer: AuthUser, input: CreateTransactio
       await audit(tx, "TRADE_MATCHED", "Transaction", created.id, buyer.id, { total: total.toString() });
       return created;
     },
-    { isolationLevel: "Serializable", timeout: 12_000 },
+    // 12s was not enough headroom for the documented target shape (a purchase
+    // spanning 20-40 listings): on slower storage the batch locks and per-credit
+    // writes ran past it and all three retries exhausted into TRANSACTION_TIMEOUT,
+    // failing a purchase that was otherwise progressing fine. Holding locks a few
+    // seconds longer is the lesser cost.
+    { isolationLevel: "Serializable", timeout: 30_000 },
   );
 
   // §10 risk row: retry on a serialization failure (expected under contention — the
@@ -263,9 +269,19 @@ export async function releaseReservation(transactionId: string, toStatus: "CANCE
       const credit = await tx.energyCredit.findUnique({ where: { id: listing.creditId } });
       if (!credit) continue;
 
+      // Restoring balance must not resurrect a credit that is dead for reasons
+      // unrelated to this reservation. A credit backing two listings can be
+      // RETIRED by settling the first (settlement.service.ts:131) while the
+      // second is still reserved; releasing that second one would have stamped
+      // AVAILABLE over it — Bug 7's failure mode on the release path.
+      const DEAD: CreditStatus[] = ["FROZEN", "EXPIRED", "RETIRED", "SETTLED"];
       await tx.energyCredit.update({
         where: { id: credit.id },
-        data: { availableKwh: { increment: match.quantityKwh }, reservedKwh: { decrement: match.quantityKwh }, status: "AVAILABLE" },
+        data: {
+          availableKwh: { increment: match.quantityKwh },
+          reservedKwh: { decrement: match.quantityKwh },
+          ...(DEAD.includes(credit.status) ? {} : { status: "AVAILABLE" }),
+        },
       });
 
       // Recompute the listing's status from the restored quantity rather than
