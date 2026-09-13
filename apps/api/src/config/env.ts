@@ -14,7 +14,10 @@ export const env = {
   databaseUrl: required("DATABASE_URL"),
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
-  corsOrigin: (process.env.CORS_ORIGIN ?? "http://localhost:5173").split(","),
+  corsOrigin: (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 
   // Single source of truth for the platform + DISCOM cut. The Sell page reads this
   // back via /users/dashboard rather than hardcoding a percentage — the two drifted

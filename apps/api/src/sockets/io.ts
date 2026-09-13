@@ -2,6 +2,7 @@ import type { Server as HttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
+import { isOriginAllowed } from "../config/cors";
 import { logger } from "../lib/logger";
 import { userRoom, zoneRoom } from "./events";
 
@@ -9,7 +10,12 @@ let io: SocketIOServer | null = null;
 
 export function initSocket(httpServer: HttpServer): SocketIOServer {
   io = new SocketIOServer(httpServer, {
-    cors: { origin: env.corsOrigin, credentials: true },
+    cors: {
+      origin: (origin, callback) => {
+        callback(null, isOriginAllowed(origin));
+      },
+      credentials: true,
+    },
   });
 
   io.on("connection", (socket) => {

@@ -183,7 +183,7 @@ async function transferOnChain(
 }
 
 async function releaseCredits(transactionId: string) {
-  const { releaseReservation } = await import("../transactions/transactions.service");
+  const { releaseReservation } = await import("../transactions/transactions.service.js");
   await releaseReservation(transactionId, "CANCELLED").catch(() => {
     // best-effort — transaction may already be in a terminal state
   });

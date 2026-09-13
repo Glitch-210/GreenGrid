@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { env } from "./config/env";
+import { isOriginAllowed } from "./config/cors";
 import { API_PREFIX } from "./config/constants";
 import { apiRateLimit } from "./middleware/rateLimit.middleware";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware";
@@ -11,7 +12,14 @@ export function createApp() {
   const app = express();
 
   app.use(helmet());
-  app.use(cors({ origin: env.corsOrigin, credentials: true }));
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        callback(null, isOriginAllowed(origin));
+      },
+      credentials: true,
+    })
+  );
   app.use(express.json());
   app.use(apiRateLimit);
 
