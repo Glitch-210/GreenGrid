@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const apiOrigin = import.meta.env.VITE_API_ORIGIN ?? "";
+
 export const api = axios.create({
-  baseURL: "/api/v1",
+  baseURL: apiOrigin ? `${apiOrigin}/api/v1` : "/api/v1",
 });
 
 api.interceptors.request.use((config) => {
